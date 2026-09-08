@@ -61,6 +61,15 @@ node tools/repo.mjs openspec <args>     the pinned, project-local OpenSpec CLI
 
 Run `check` before asking for review. Never run a formatter as part of validating.
 
+## OpenSpec change artifacts
+
+The `proposal.md`/`design.md`/`tasks.md`/`spec.md` templates are already lean — verbosity comes from over-writing them, not the format. Keep every fact in exactly one file; do not restate it in a sibling artifact.
+
+- **proposal.md**: `Why` is 1-2 sentences, not a narrative. `What Changes` and `Capabilities` are the sections that matter. Do **not** write an `Impact` section — it only restates `What Changes` as file paths.
+- **design.md**: short `Context`, keep `Goals`, **never** write `Non-Goals` or `Risks / Trade-offs`. Record only the decisions that shape the implementation. No `Migration Plan`, no how-to-run/deploy notes. For a small, low-risk change, a few honest lines beat padding it out to look thorough.
+- **specs**: short `Purpose`; requirement summary text stays short (1-3 sentences — they drift long). Write scenarios the way a business analyst would: business-visible behaviour in business language. Technical scenarios are acceptable only when the feature itself is technical (e.g. an API contract). Don't mix business requirements with implementation details or non-functional concerns. Only as many scenarios as distinguish real behavior; reserve exhaustive edge-case coverage for cross-cutting, security, or migration-risk changes.
+- **tasks.md**: `- [x] N.N <description>` only. No parenthetical justification, verification notes, or "why this is safe" commentary per task — if verification needs recording, one line under a single Verification task covers it once.
+
 ## Workflow
 
 A change is **Standard** unless a human has argued otherwise. **`CONTRIBUTING.md` has the numbered
