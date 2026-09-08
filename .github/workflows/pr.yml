@@ -201,8 +201,10 @@ jobs:
 
       - name: Fetch the base ref
         # The base branch is read from the event payload, never assumed to be called anything.
+        # checkout's `fetch-depth: 0` means unlimited history. git's `--depth` does not: depth 0
+        # is rejected (`fatal: depth 0 is not a positive number`). Omit --depth to fetch the ref fully.
         if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=0 origin "+refs/heads/${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
+        run: git fetch --no-tags origin "+refs/heads/${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
 
       - name: Gate
         # Runs for drafts too, and fails for them the same way. Draft state is deliberately not an

@@ -161,6 +161,7 @@ export function checkWorkflowPolicy(root) {
     checkNoSecretsForForks(relative, text, findings);
     checkTimeouts(relative, workflow, findings);
     checkAggregate(name, relative, workflow, findings);
+    checkGitFetchDepth(relative, workflow, findings);
   }
 
   checkDocumentedNamesExist(root, files, findings);
@@ -249,6 +250,28 @@ function checkNoSecondImplementation(relative, workflow, findings) {
           message:
             `job "${jobName}" runs "${command}", which is not a repository entry point. CI must ` +
             'call the same commands a contributor does — see docs/adr/0005-one-check-entry-point.md.',
+        });
+      }
+    }
+  }
+}
+
+/**
+ * checkout's `fetch-depth: 0` means unlimited history. git's `--depth=0` is invalid and fails
+ * the job with `fatal: depth 0 is not a positive number`. The fetch of the PR base ref must
+ * omit `--depth` to get the same "full history" effect.
+ */
+function checkGitFetchDepth(relative, workflow, findings) {
+  for (const [jobName, job] of jobs(workflow)) {
+    for (const step of job?.steps ?? []) {
+      if (typeof step?.run !== 'string') continue;
+      if (/\bgit\s+fetch\b/.test(step.run) && /--depth=0\b/.test(step.run)) {
+        findings.push({
+          level: 'error',
+          file: relative,
+          message:
+            `job "${jobName}" runs git fetch with --depth=0, which git rejects. checkout's ` +
+            'fetch-depth: 0 means unlimited history; git fetch omits --depth for that effect.',
         });
       }
     }
