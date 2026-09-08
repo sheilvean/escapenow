@@ -64,7 +64,9 @@ app.MapDestinationEndpoints();
 var frontendRoot = Path.GetFullPath(
     Path.Combine(app.Environment.ContentRootPath, "..", "..", "frontend", "dist", "frontend", "browser"));
 
-if (Directory.Exists(frontendRoot))
+// The integration host uses the Testing environment; serving the SPA fallback there would turn
+// every unknown path into index.html and mask the 404 ProblemDetails contract under test.
+if (!app.Environment.IsEnvironment("Testing") && Directory.Exists(frontendRoot))
 {
     var frontendFiles = new PhysicalFileProvider(frontendRoot);
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendFiles });
