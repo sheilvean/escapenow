@@ -13,6 +13,9 @@ describes the environment those requirements are implemented in.
 ## Stack
 
 - .NET 10 (`net10.0`), ASP.NET Core, C# with nullable reference types enabled.
+- Frontend: Angular under `frontend/`, served separately from the API; not part of the .NET
+  solution check.
+- Weather: Open-Meteo, no API key.
 - Tests: xUnit v3 on Microsoft.Testing.Platform. One runner, selected in `global.json`.
 - Architecture rules: ArchUnitNET plus a project-reference graph check.
 - Repository tooling: Node, entry point `tools/repo.mjs`.

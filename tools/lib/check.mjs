@@ -468,9 +468,17 @@ function tail(result, lines) {
   return split.slice(-lines).join('\n');
 }
 
-/** Parse the Microsoft.Testing.Platform summary block. */
-function extractTestSummary(output) {
-  const number = (label) => Number(new RegExp(`^\\s*${label}:\\s*(\\d+)`, 'm').exec(output)?.[1] ?? '0');
+/**
+ * Parse the Microsoft.Testing.Platform summary block.
+ *
+ * MTP prints CSI colour sequences even when `NO_COLOR=1`, so the labels are often
+ * `\x1b[m  total: 23` rather than `  total: 23`. Counting on a line that starts with
+ * the label would treat a real run as zero tests, which this stage refuses as evidence.
+ * Exported so the ANSI case is tested without standing up `dotnet test`.
+ */
+export function extractTestSummary(output) {
+  const plain = stripAnsi(output);
+  const number = (label) => Number(new RegExp(`^\\s*${label}:\\s*(\\d+)`, 'm').exec(plain)?.[1] ?? '0');
 
   return {
     total: number('total'),
@@ -478,4 +486,9 @@ function extractTestSummary(output) {
     skipped: number('skipped'),
     failed: number('failed'),
   };
+}
+
+/** CSI SGR sequences (`ESC[…m` and kin). MTP's colouring is this form. */
+function stripAnsi(text) {
+  return text.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '');
 }

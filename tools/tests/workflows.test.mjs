@@ -305,6 +305,14 @@ describe('each policy rule fires on a workflow that breaks it', () => {
       goodWorkflow().replace(/  archive-gate:\n(?:.*\n)*?      - run: npm ci\n/, ''),
       /does not define the job "archive-gate"/,
     ],
+    [
+      'git fetch --depth=0, which git rejects',
+      goodWorkflow().replace(
+        '      - run: npm ci',
+        '      - name: Fetch the base ref\n        run: git fetch --no-tags --depth=0 origin "+refs/heads/main:refs/remotes/origin/main"'
+      ),
+      /git fetch with --depth=0/,
+    ],
   ];
 
   for (const [label, yaml, expected] of cases) {

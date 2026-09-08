@@ -140,6 +140,11 @@ function copyTemplate(name) {
     }
   }
 
+  // This repository is already an initialized application. The generator suite still has to
+  // start from the placeholder token, or `init` correctly refuses and every rename assertion
+  // is testing the live name rather than the generator.
+  restorePlaceholderState(target);
+
   // git, so the scenarios that assert "no diff" have something to compare against.
   exec(target, 'git', ['init', '-q', '-b', 'work']);
   exec(target, 'git', ['config', 'user.email', 'template-tests@example.invalid']);
@@ -150,8 +155,140 @@ function copyTemplate(name) {
   return target;
 }
 
+const toPosix = (p) => p.split(path.sep).join('/');
+
+/** Globs written for the placeholder, plus the same globs with the live application name. */
+function globsForAppliedName(globs, placeholder, appliedName) {
+  const out = [];
+  for (const glob of globs) {
+    out.push(glob);
+    const alt = glob.split(placeholder).join(appliedName);
+    if (alt !== glob) out.push(alt);
+  }
+  return out;
+}
+
+function listedFiles(root, globs, excludeGlobs) {
+  const excluded = new Set(
+    excludeGlobs.flatMap((g) => fs.globSync(g, { cwd: root, withFileTypes: false }).map(toPosix))
+  );
+  const isExcluded = (relative) =>
+    excluded.has(relative) ||
+    excludeGlobs.some((g) => {
+      const prefix = g.replace(/\/\*\*$/, '');
+      return relative === prefix || relative.startsWith(prefix + '/');
+    });
+
+  const files = new Set();
+  for (const glob of globs) {
+    for (const match of fs.globSync(glob, { cwd: root, withFileTypes: false })) {
+      const relative = toPosix(match);
+      if (isExcluded(relative)) continue;
+      const absolute = path.join(root, relative);
+      if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) files.add(relative);
+    }
+  }
+  return [...files].sort();
+}
+
+function remapAncestors(relative, movedPrefixes) {
+  let result = relative;
+  for (const { from, to } of [...movedPrefixes].sort((a, b) => b.from.length - a.from.length)) {
+    if (result === from) return to;
+    if (result.startsWith(from + '/')) result = to + result.slice(from.length);
+  }
+  return result;
+}
+
+/**
+ * Turn an initialized copy back into the placeholder tree `init` expects.
+ *
+ * Substitutions follow the manifest's globs, not a repository-wide replace — the same boundary
+ * `init` itself uses, run in reverse.
+ */
+function restorePlaceholderState(root) {
+  const configPath = path.join(root, 'project.config.json');
+  const config = readJson(configPath);
+  if (!config.template?.initialized) return;
+
+  const manifest = readJson(path.join(root, 'tools', 'rename.manifest.json'));
+  const placeholder = manifest.placeholder.solutionName;
+  const solutionName = config.template.appliedTokens?.solutionName;
+  const rootNamespace = config.template.appliedTokens?.rootNamespace ?? solutionName;
+
+  if (solutionName && solutionName !== placeholder) {
+    const contentGlobs = globsForAppliedName(manifest.contentGlobs, placeholder, solutionName);
+    const excludeGlobs = globsForAppliedName(manifest.excludeGlobs, placeholder, solutionName);
+
+    for (const relative of listedFiles(root, contentGlobs, excludeGlobs)) {
+      const file = path.join(root, relative);
+      const original = fs.readFileSync(file, 'utf8');
+      const token = relative.endsWith('.cs') ? rootNamespace : solutionName;
+      let updated = original.split(token).join(placeholder);
+      if (toPosix(relative).endsWith('packages.lock.json')) {
+        updated = updated
+          .split(token.toLowerCase())
+          .join(placeholder.toLowerCase());
+      }
+      if (updated !== original) fs.writeFileSync(file, updated, 'utf8');
+    }
+
+    const renameGlobs = globsForAppliedName(manifest.renameGlobs, placeholder, solutionName);
+    const targets = new Set();
+    for (const glob of renameGlobs) {
+      for (const match of fs.globSync(glob, { cwd: root, withFileTypes: false })) {
+        const relative = toPosix(match);
+        if (path.basename(relative).includes(solutionName) || relative.includes(`/${solutionName}`)) {
+          targets.add(relative);
+        }
+      }
+    }
+
+    const movedPrefixes = [];
+    const ordered = [...targets].sort(
+      (a, b) => a.split('/').length - b.split('/').length || a.length - b.length
+    );
+    for (const relative of ordered) {
+      const from = remapAncestors(relative, movedPrefixes);
+      const basename = from.split('/').at(-1);
+      const newBasename = basename.split(solutionName).join(placeholder);
+      if (newBasename === basename) continue;
+      const to = [...from.split('/').slice(0, -1), newBasename].join('/');
+      const absoluteFrom = path.join(root, from);
+      const absoluteTo = path.join(root, to);
+      if (!fs.existsSync(absoluteFrom) || fs.existsSync(absoluteTo)) continue;
+      fs.renameSync(absoluteFrom, absoluteTo);
+      movedPrefixes.push({ from, to });
+    }
+  }
+
+  const next = readJson(configPath);
+  next.template.initialized = false;
+  next.template.appliedTokens = {};
+  next.solutionName = placeholder;
+  next.rootNamespace = placeholder;
+  next.paths.solutionFile = `${placeholder}.slnx`;
+  writeJson(configPath, next);
+}
+
 function exec(cwd, file, argv, { expectFailure = false } = {}) {
-  const result = run(file, argv, { cwd, timeoutMs: 20 * 60 * 1000 });
+  const env = {
+    ...process.env,
+    NO_COLOR: '1',
+    DOTNET_CLI_UI_LANGUAGE: 'en',
+    DOTNET_NOLOGO: '1',
+    DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+  };
+  // The suite copies the template into a throwaway git repo. Inheriting the host
+  // GITHUB_* context would make archive-gate diff against the pull-request base
+  // in a repository that has neither a remote nor that ref.
+  delete env.GITHUB_EVENT_NAME;
+  delete env.GITHUB_BASE_REF;
+  delete env.GITHUB_HEAD_REF;
+  delete env.GITHUB_REF;
+  delete env.GITHUB_REF_NAME;
+
+  const result = run(file, argv, { cwd, timeoutMs: 20 * 60 * 1000, env });
 
   if (VERBOSE) {
     detail(`$ ${formatArgv(result.argv)}`);
@@ -308,6 +445,12 @@ scenario('first application: rename applies to the declared file set only', () =
   assert(
     leftovers.length === 0,
     `no occurrence of the placeholder "${placeholder}" remains: ${leftovers.join(', ')}`
+  );
+
+  assert(
+    fs.readFileSync(path.join(firstApp, 'src', 'AcmeOrders.Application', 'packages.lock.json'), 'utf8')
+      .includes('"acmeorders.domain"'),
+    'NuGet lock files record the new project id in lowercase, so CI locked restore can succeed'
   );
 
   const config = readJson(path.join(firstApp, 'project.config.json'));
