@@ -5,10 +5,13 @@ so it points at the authoritative documents instead of restating them.
 
 ## What this repository is
 
-A configurable .NET 10 template. It carries a way of working — a validated configuration, one
-check entry point, executable architecture rules, OpenSpec, and this agent context — not a
-business domain. Do not add example domain modules; module names come from the registry in
-`project.config.json`.
+EscapeNow plans last-minute European city breaks. It also carries a way of working — a validated
+configuration, one check entry point, executable architecture rules, OpenSpec, and this agent
+context.
+
+Product behaviour lives in `openspec/specs/` (city-break scoring, destination recommendations,
+discovery UI), and in `openspec/changes/` while a change is open. Module names still come from the
+registry in `project.config.json`; this slice is not a registered module.
 
 ## Repository map
 
