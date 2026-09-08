@@ -371,12 +371,39 @@ function stageFrontendTest(root, config) {
     if (target.kind !== 'ready') return frontendUnavailable(target);
 
     const reportPath = path.join(root, FRONTEND_TEST_REPORT);
-    fs.rmSync(reportPath, { force: true });
+
+    // A report left over from an earlier run would be read as this run's result, so it goes
+    // first. `force` only swallows ENOENT: a locked file or a directory in its place still
+    // throws, and nothing above catches, so an unremovable report would abort the whole check
+    // instead of failing this one stage.
+    try {
+      fs.rmSync(reportPath, { force: true, recursive: true });
+    } catch (error) {
+      return {
+        status: 'failed',
+        commands: [],
+        messages: [
+          `Could not remove the previous test report at ${FRONTEND_TEST_REPORT}: ` +
+            `${error.message}. The stage did not run, because a stale report would have been ` +
+            "read as this run's result.",
+        ],
+      };
+    }
 
     const reportArg = path.relative(target.dir, reportPath).split(path.sep).join('/');
     const result = run(
       process.execPath,
-      [ANGULAR_CLI, 'test', '--watch=false', '--reporters=json', `--output-file=${reportArg}`],
+      [
+        ANGULAR_CLI,
+        'test',
+        '--watch=false',
+        // json first, so --output-file applies to it; default as well, because the JSON file
+        // holds counts and nothing else. Without it a failing run's output is a bundle-size
+        // table, and the operator never learns which assertion broke.
+        '--reporters=json',
+        '--reporters=default',
+        `--output-file=${reportArg}`,
+      ],
       { cwd: target.dir }
     );
 
@@ -396,29 +423,32 @@ function stageFrontendTest(root, config) {
       };
     }
 
-    if (report.total === 0) {
+    // Executed, not collected. The runner counts a skipped test in its total and still exits 0,
+    // so a suite with every test marked skip would otherwise report green having run nothing --
+    // which is the failure this stage exists to catch.
+    if (report.executed === 0) {
       return {
         status: 'failed',
         commands: [command],
         messages: [
-          'The frontend test run executed 0 tests. An empty run is not evidence.',
+          `The frontend test run executed 0 tests (${report.total} collected, ` +
+            `${report.skipped} skipped). An empty run is not evidence.`,
           tail(result, 15),
         ],
       };
     }
 
     const green = result.status === 0 && report.failed === 0;
+    const counts =
+      `${report.executed} test(s) executed: ${report.passed} passed, ${report.failed} failed` +
+      (report.skipped > 0 ? `, ${report.skipped} skipped` : '');
 
     return {
       status: green ? 'passed' : 'failed',
       commands: [command],
       messages: green
-        ? [`${report.total} test(s): ${report.passed} passed, ${report.failed} failed`]
-        : [
-            `${report.total} test(s): ${report.passed} passed, ${report.failed} failed ` +
-              `(runner exit code ${result.status})`,
-            tail(result, 30),
-          ],
+        ? [counts]
+        : [`${counts} (runner exit code ${result.status})`, tail(result, 30)],
     };
   });
 }
@@ -430,6 +460,9 @@ function stageFrontendTest(root, config) {
  * needs its own tests because that parser broke once on colour codes. Everything here fails
  * closed, so a missing, unparseable or countless report is `readable: false` and the stage treats
  * it as a failure. Exported so those cases are tested without running a build.
+ *
+ * `total` is what the runner collected; `executed` is what it actually ran. The two differ by the
+ * skipped tests, and only the second is evidence.
  */
 export function readVitestReport(file) {
   let raw;
@@ -455,7 +488,11 @@ export function readVitestReport(file) {
     return { readable: false, reason: 'it carries no test counts' };
   }
 
-  return { readable: true, total, passed, failed };
+  // Pending and todo are collected but never run. They are absent from an older report rather
+  // than zero, so a missing key means "none", while `executed` stays the number that actually ran.
+  const skipped = (count('numPendingTests') ?? 0) + (count('numTodoTests') ?? 0);
+
+  return { readable: true, total, passed, failed, skipped, executed: total - skipped };
 }
 
 /** OpenSpec artifact validation, through the pinned local CLI. */

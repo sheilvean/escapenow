@@ -110,20 +110,38 @@ function commandSync(flags) {
 // --------------------------------------------------------------------------------------------
 
 /**
- * The lowest Node major `package.json` accepts, or null when it says nothing.
+ * The Node majors `package.json` accepts, or null when it says nothing this can answer.
  *
- * Only the floor is read: `doctor` reports whether the running Node is old enough, and a full
- * semver-range evaluation would be a dependency for a question that has one number in it.
+ * `engines.node` is a semver range, and evaluating one properly needs a semver library. So this
+ * reads only the shape it can read honestly: a range of `^`/`>=` clauses joined by `||`, each
+ * naming one major. Anything else -- an upper bound, a hyphen range, a bare comparator this does
+ * not know -- returns null, and `doctor` then says the range was not evaluated rather than
+ * guessing from the first number it saw. A wrong "ok" is worse than an admitted gap.
  */
-function requiredNodeMajor(root) {
+function acceptedNodeMajors(root) {
+  let range;
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    const range = manifest?.engines?.node;
-    const floor = typeof range === 'string' ? /(\d+)/.exec(range) : null;
-    return floor ? Number(floor[1]) : null;
+    range = manifest?.engines?.node;
   } catch {
     return null;
   }
+
+  if (typeof range !== 'string' || range.trim() === '') return null;
+
+  const majors = [];
+  for (const clause of range.split('||')) {
+    const match = /^\s*(\^|>=)\s*(\d+)(\.\d+)*(\.[\dx*]+)?\s*$/.exec(clause);
+    if (!match) return null;
+    majors.push({ major: Number(match[2]), openEnded: match[1] === '>=' });
+  }
+
+  return majors.length > 0 ? majors : null;
+}
+
+/** Whether the running Node satisfies any clause of the declared range. */
+function nodeSatisfies(majors, running) {
+  return majors.some((c) => (c.openEnded ? running >= c.major : running === c.major));
 }
 
 function commandDoctor() {
@@ -150,13 +168,16 @@ function commandDoctor() {
   // The required Node version is owned by package.json's `engines`, which is also what
   // setup-node reads in CI. Restating it here would be a second source of truth, and it had
   // already drifted once.
-  const required = requiredNodeMajor(root);
+  const majors = acceptedNodeMajors(root);
+  const running = Number(process.versions.node.split('.')[0]);
   report(
-    required === null || Number(process.versions.node.split('.')[0]) >= required,
+    majors === null || nodeSatisfies(majors, running),
     'Node.js',
-    required === null
-      ? `v${process.versions.node} (package.json declares no engines.node)`
-      : `v${process.versions.node} (package.json requires >= ${required})`
+    majors === null
+      ? `v${process.versions.node} (engines.node was not evaluated; check it by hand)`
+      : `v${process.versions.node} (package.json accepts ${majors
+          .map((c) => (c.openEnded ? `>= ${c.major}` : `${c.major}.x`))
+          .join(' or ')})`
   );
   out();
 
