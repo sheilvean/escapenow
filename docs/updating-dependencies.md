@@ -104,7 +104,7 @@ node tools/repo.mjs check
 Verified against 1.12.0: it leaves `openspec/config.yaml` byte-identical, which is why the project
 context lives there and not in a file the CLI owns.
 
-Three things to re-verify after an OpenSpec upgrade, because the template depends on them:
+Three things to re-verify after an OpenSpec upgrade, because the tooling depends on them:
 
 1. **The project-local install still works.** Upstream documents only a global install, so this is
    a supported-but-undocumented arrangement — see ADR 0004. `node tools/repo.mjs doctor` fails if
@@ -138,7 +138,7 @@ node tools/repo.mjs openspec config profile     # interactive: add `verify`
 node tools/repo.mjs openspec update             # regenerate this project's integration
 ```
 
-**The template will not do this for you**, and neither should any script in it: it changes a
+**No script here will do this for you**, and none should: it changes a
 setting that affects every OpenSpec project on the machine. `node tools/repo.mjs doctor` detects
 the absence and prints the opt-in instruction; the `specs` check stage reports it as a finding.
 Neither one changes your configuration.
@@ -147,7 +147,7 @@ If you add `verify` to a shared machine, tell the other people using it.
 
 ## The agent configuration
 
-`.claude/settings.json`, `.claude/agents/**`, `.claude/hooks/**`, `.claude/rules/**` and `.mcp.json`
+`.claude/settings.json`, `.claude/agents/**`, `.claude/hooks/**` and `.claude/rules/**`
 are maintained by the team. `openspec update` does not touch them.
 
 ```bash
@@ -162,7 +162,7 @@ When Claude Code itself changes:
 
 1. Re-read the hook schema. The settings file declares `type: command` hooks with explicit
    timeouts; a new event or field is opt-in, not automatic.
-2. Re-read the permission rule semantics. The template relies on two documented behaviours: file
+2. Re-read the permission rule semantics. The configuration relies on two documented behaviours: file
    access is matched only against `Read(...)` and `Edit(...)` rules, and `defaultMode` values
    `auto` and `bypassPermissions` do not take effect from project settings. Both are asserted by
    the `agent-config` stage; if either changes, `SECURITY.md` needs updating too.
@@ -182,7 +182,7 @@ curl -s https://api.github.com/repos/actions/checkout/git/ref/tags/v7.0.1 | grep
 Update the SHA **and** the `# vX.Y.Z` comment beside it — the comment is the only readable record
 of which version a SHA is.
 
-`gh` is not a dependency of this repository. It was not installed on the machine where the template
+`gh` is not a dependency of this repository. It was not installed on the machine where this project
 was built, and no check requires it.
 
 ## The gitleaks binary

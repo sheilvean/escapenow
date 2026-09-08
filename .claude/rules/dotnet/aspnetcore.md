@@ -33,7 +33,8 @@ An endpoint translates HTTP to a call and a result back to HTTP. Nothing else:
   must fail the deployment, not the first request that happens to reach the affected path.
 - The application layer takes options as a plain object. Unwrapping `IOptions<T>` is the host's
   job, which is what keeps the options abstractions out of the inner layers — and the architecture
-  tests enforce that.
+  tests enforce that. EscapeNow currently binds no options, so a new one starts this pattern rather
+  than following an example.
 - Defaults live in `appsettings.json` and must be safe for a developer with no local setup.
   Anything environment-specific comes from the environment, never from a committed file.
 - Never commit a connection string with credentials, or any secret. Local overrides go in an
@@ -50,12 +51,17 @@ An endpoint translates HTTP to a call and a result back to HTTP. Nothing else:
 
 ## Health
 
+`/health/live` and `/health/ready` are mapped in `Program.cs` on the framework's health-check
+middleware. No check is registered: there is no dependency to probe, and a forecast API failure is
+a request failure rather than an unhealthy process. See `openspec/specs/service-health/`.
+
 - Liveness answers "is the process running" and must not depend on anything slow or remote. An
   orchestrator restarts the process when it fails, so a dependency outage must not make it fail.
-- Readiness answers "should this receive traffic" and may consult dependencies. An unknown
-  dependency state is reported as unavailable, never as healthy.
+- Readiness answers "should this receive traffic" and may consult dependencies. If one is ever
+  added, an unknown dependency state is reported as unavailable, never as healthy.
+- Add a dependency check by registering it here, not by introducing a port in an inner layer.
 
 ## Not imposed
 
-No Kubernetes manifests, no Aspire, no container orchestration, no service mesh. The template
+No Kubernetes manifests, no Aspire, no container orchestration, no service mesh. This repository
 ships one deployable process. Add what a real deployment needs, as an argued change.

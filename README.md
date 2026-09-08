@@ -54,7 +54,9 @@ Angular UI  →  EscapeNow.Api  →  Open-Meteo
                   └── OpenMeteoWeatherService (forecast fetch)
 ```
 
-Layers follow the template structure: **Domain** (scoring rules), **Application** (services & ports), **Infrastructure** (HTTP weather client), **Api** (endpoints).
+Four layers: **Domain** (scoring rules), **Application** (orchestration and ports),
+**Infrastructure** (the HTTP weather client), **Api** (composition and endpoints). The dependency
+direction is enforced by tests — see `docs/ARCHITECTURE.md`.
 
 ## City Break Score
 
@@ -68,14 +70,15 @@ Simple 0–100 score (no ML):
 
 Barcelona, Lisbon, Rome, Madrid, Valencia, Nice, Athens, Budapest, Prague, Vienna, Amsterdam, Copenhagen
 
-## Future features (UI placeholders only)
-
-- **Check flights** — Coming soon
-- **Generate weekend plan** — Coming soon
-- **Save this trip** — Coming soon
+The `/discover` and `/destination/:city` screens also show non-functional "Check flights",
+"Generate weekend plan" and "Save this trip" buttons. They are deliberate placeholders with no
+backend behind them.
 
 ## Checks
 
 ```bash
 node tools/repo.mjs check
 ```
+
+Ten stages, in order. `passed`, `failed` and `not-configured` are three different outcomes; a
+stage that executed zero tests fails. `CONTRIBUTING.md` has the change workflow.

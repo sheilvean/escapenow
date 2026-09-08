@@ -71,7 +71,7 @@ jobs:
         run: dotnet restore
 
       - name: Check
-        # The nine stages. --ci adds machine-readable output and the pull-request-only checks.
+        # The ten stages. --ci adds machine-readable output and the pull-request-only checks.
         run: node tools/repo.mjs check --ci
 
       - name: Report

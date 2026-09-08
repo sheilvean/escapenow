@@ -15,6 +15,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/**
+ * The generated regions, and the file each one is rendered from.
+ *
+ * Declared here rather than in a data file because there is exactly one consumer — `plannedRegions`
+ * below — and a renderer has to exist for every entry anyway. A separate JSON file would put a
+ * read, a parse and a drift risk on the critical path of `check` for two literal entries.
+ */
+export const GENERATED_REGIONS = [
+  {
+    file: 'CLAUDE.md',
+    begin: '<!-- BEGIN GENERATED: project-context -->',
+    end: '<!-- END GENERATED: project-context -->',
+    source: 'project.config.json',
+  },
+  {
+    file: 'openspec/config.yaml',
+    begin: '  <!-- BEGIN GENERATED: project-context -->',
+    end: '  <!-- END GENERATED: project-context -->',
+    source: 'openspec/project-context.md',
+  },
+];
+
 export class RegionError extends Error {
   constructor(message) {
     super(message);
@@ -77,15 +99,9 @@ function indent(text, prefix) {
  * agent's context cannot disagree with the repository's actual layout.
  */
 export function renderClaudeRegion(config) {
-  const modules =
-    config.architecture.modules.length === 0
-      ? 'none registered'
-      : config.architecture.modules.map((m) => `${m.name} (contract: ${m.contract})`).join(', ');
-
   const integrations = [
     `database: ${config.integrations.database}`,
     `deployment: ${config.integrations.deployment}`,
-    `mcp: ${config.integrations.mcp.enabled ? 'enabled' : 'disabled'}`,
   ].join(', ');
 
   return [
@@ -93,9 +109,10 @@ export function renderClaudeRegion(config) {
     '',
     `- Solution: \`${config.paths.solutionFile}\` (root namespace \`${config.rootNamespace}\`)`,
     `- Production projects: \`${config.paths.src}/${config.solutionName}.{Domain,Application,Infrastructure,Api}\``,
+    '- Frontend: `frontend/` (Angular, served separately; not part of the .NET solution check)',
     `- Test projects: \`${config.paths.tests}/${config.solutionName}.{UnitTests,ArchitectureTests,IntegrationTests}\``,
     `- Negative architecture fixtures: \`${config.paths.tests}/fixtures/\``,
-    `- Architecture profile: \`${config.architecture.profile}\` — modules: ${modules}`,
+    `- Architecture profile: \`${config.architecture.profile}\``,
     `- Optional integrations: ${integrations}`,
     `- Documentation language: \`${config.documentation.language}\``,
     `- Archive gate: ${config.openspec.archiveGate.enabled ? `enabled, scope \`${config.openspec.archiveGate.scope}\`` : 'disabled'}`,
@@ -139,10 +156,10 @@ function stripAuthoringPreamble(markdown) {
  *
  * @returns {Array<{file: string, begin: string, end: string, body: string, source: string}>}
  */
-export function plannedRegions(root, config, manifest) {
+export function plannedRegions(root, config) {
   const projectContextPath = path.join(root, 'openspec', 'project-context.md');
 
-  return manifest.generatedRegions.map((region) => {
+  return GENERATED_REGIONS.map((region) => {
     let body;
     if (region.file === 'CLAUDE.md') {
       body = renderClaudeRegion(config);
@@ -156,7 +173,7 @@ export function plannedRegions(root, config, manifest) {
       body = renderOpenSpecRegion(config, fs.readFileSync(projectContextPath, 'utf8'));
     } else {
       throw new RegionError(
-        `tools/rename.manifest.json declares a generated region for "${region.file}", ` +
+        `GENERATED_REGIONS declares a region for "${region.file}", ` +
           'but tools/lib/generated.mjs has no renderer for it.'
       );
     }

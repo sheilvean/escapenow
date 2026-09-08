@@ -90,12 +90,6 @@ const FORBIDDEN_LITERALS = [
     pattern: /(?<![\w.-])\/(?:home|Users)\/[A-Za-z0-9_.-]+\//g,
     message: 'an absolute path inside a user profile.',
   },
-  {
-    pattern: /\b(?:Orders|Billing|Invoicing|Payments)\.(?:Domain|Application|Infrastructure|Api)\b/g,
-    message:
-      'an example domain module presented as a real one. Module names come from the registry in ' +
-      'project.config.json.',
-  },
 ];
 
 /** Shapes that look like committed credentials. Deliberately narrow, to stay actionable. */
@@ -187,10 +181,10 @@ export function validateAgentConfig(root) {
   if (settings) {
     checkForbiddenSettings(settings, findings);
     checkPermissionRuleShapes(settings, findings);
+    checkProtectedConfigIsBehindAsk(settings, findings);
     checkDeclaredHooks(root, settings, findings);
   }
 
-  checkMcp(root, findings);
   checkRulePathScoping(root, findings);
   checkMarkdownFrontmatter(root, findings);
   checkClaudeMdReferences(root, findings);
@@ -235,6 +229,50 @@ function checkForbiddenSettings(settings, findings) {
         level: 'error',
         file: `${CLAUDE_DIR}/settings.json`,
         message: `permissions.deny does not cover ${what} (no rule mentioning "${needle}").`,
+      });
+    }
+  }
+}
+
+/**
+ * The files that change what the agent is allowed to do must sit behind an `ask` rule.
+ *
+ * This is the only mechanism that actually pauses an edit to one of them: the harness evaluates
+ * `permissions.ask` before the tool runs. A hook cannot, because a hook reports after the fact and
+ * emits no permission decision. So the guarantee has to be checked here — otherwise dropping a
+ * path from the ask list would silently remove the one control standing in front of it.
+ */
+const PROTECTED_CONFIG = [
+  '.claude/settings.json',
+  'project.config.json',
+  'global.json',
+  'Directory.Packages.props',
+  '.github/workflows/**',
+];
+
+function checkProtectedConfigIsBehindAsk(settings, findings) {
+  const ask = settings.permissions?.ask;
+
+  if (!Array.isArray(ask)) {
+    findings.push({
+      level: 'error',
+      file: '.claude/settings.json',
+      message:
+        'declares no permissions.ask list, so no edit to a protected configuration file prompts ' +
+        'a human.',
+    });
+    return;
+  }
+
+  const rules = new Set(ask);
+  for (const target of PROTECTED_CONFIG) {
+    if (!rules.has(`Edit(${target})`)) {
+      findings.push({
+        level: 'error',
+        file: '.claude/settings.json',
+        message:
+          `permissions.ask does not cover "${target}". It changes what the agent may do, so an ` +
+          `edit to it must prompt a human: add Edit(${target}).`,
       });
     }
   }
@@ -339,49 +377,6 @@ function resolveHookCommand(root, hook) {
 
 function toRelative(root, absolute) {
   return path.relative(root, absolute).split(path.sep).join('/');
-}
-
-function checkMcp(root, findings) {
-  const mcpPath = path.join(root, '.mcp.json');
-
-  if (!fs.existsSync(mcpPath)) {
-    findings.push({
-      level: 'error',
-      file: '.mcp.json',
-      message: 'is missing. The template ships it with no servers so the shape is reviewed up front.',
-    });
-    return;
-  }
-
-  let mcp;
-  try {
-    mcp = readJson(mcpPath);
-  } catch (error) {
-    findings.push({ level: 'error', file: '.mcp.json', message: `is not valid JSON: ${error.message}` });
-    return;
-  }
-
-  const servers = Object.keys(mcp.mcpServers ?? {});
-  if (servers.length > 0) {
-    findings.push({
-      level: 'info',
-      file: '.mcp.json',
-      message:
-        `declares ${servers.length} server(s): ${servers.join(', ')}. Confirm each was an ` +
-        'explicit opt-in and that its secrets come from outside the repository.',
-    });
-  }
-
-  const raw = fs.readFileSync(mcpPath, 'utf8');
-  for (const { name, pattern } of SECRET_PATTERNS) {
-    if (pattern.test(raw)) {
-      findings.push({
-        level: 'error',
-        file: '.mcp.json',
-        message: `appears to contain a ${name}. Secrets belong in an external mechanism.`,
-      });
-    }
-  }
 }
 
 /**
@@ -591,7 +586,6 @@ function checkSecrets(root, findings) {
   const files = [
     ...fs.globSync(`${CLAUDE_DIR}/**/*`, { cwd: root }),
     ...fs.globSync('tools/**/*.mjs', { cwd: root }),
-    '.mcp.json',
     'CLAUDE.md',
   ].map((p) => p.split(path.sep).join('/'));
 

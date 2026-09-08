@@ -85,18 +85,7 @@ internal sealed record ArchitectureConfig
 {
     [JsonPropertyName("profile")]
     public required string Profile { get; init; }
-
-    [JsonPropertyName("modules")]
-    public required IReadOnlyList<ModuleRegistration> Modules { get; init; }
 }
-
-/// <param name="Name">Module name; the project is expected at <c>{root}.Modules.{Name}</c>.</param>
-/// <param name="Contract">
-/// Namespace suffix, relative to the module root, that other modules may depend on.
-/// </param>
-internal sealed record ModuleRegistration(
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("contract")] string Contract);
 
 /// <summary>The architecture profiles the rules know how to enforce.</summary>
 internal static class ArchitectureProfiles
@@ -106,8 +95,8 @@ internal static class ArchitectureProfiles
 
     /// <summary>
     /// Whether the layer-direction rules apply. Under <c>custom</c> they report themselves not
-    /// applicable, while the cycle and module-registry rules keep running: those are invariants
-    /// of any profile, not of this one.
+    /// applicable, while the dependency-cycle rules keep running: an acyclic graph is an
+    /// invariant of any profile, not of this one.
     /// </summary>
     internal static bool LayerRulesApply =>
         RepositoryLayout.Config.Architecture.Profile == Layered;

@@ -44,9 +44,7 @@ const REQUIRED_FILES = [
   'package.json',
   'package-lock.json',
   'project.config.schema.json',
-  'tools/rename.manifest.json',
   'CLAUDE.md',
-  '.mcp.json',
   '.claude/settings.json',
   'openspec/config.yaml',
 ];
@@ -67,13 +65,13 @@ export const STAGE_NAMES = [
 /**
  * Run every stage in order.
  *
- * @param {{root: string, config: object, manifest: object, ci: boolean}} context
+ * @param {{root: string, config: object, ci: boolean}} context
  * @returns {{results: StageResult[], ok: boolean}}
  */
-export async function runCheck({ root, config, manifest, ci }) {
+export async function runCheck({ root, config, ci }) {
   const results = [];
 
-  results.push(stageConfig(root, config, manifest));
+  results.push(stageConfig(root, config));
   results.push(stageFormat(root, config));
   results.push(stageBuild(root, config, ci));
   results.push(stageTest(root, config, 'test:unit', 'UnitTests'));
@@ -104,7 +102,7 @@ function timed(name, body) {
  * a value owned by global.json, Directory.Packages.props, package.json, OpenSpec or an ADR must
  * not be restated here.
  */
-function stageConfig(root, config, manifest) {
+function stageConfig(root, config) {
   return timed('config', () => {
     const messages = [];
 
@@ -137,7 +135,7 @@ function stageConfig(root, config, manifest) {
           `rootNamespace ("${config.rootNamespace}") differs from solutionName ` +
             `("${config.solutionName}"), but no project declares an explicit <RootNamespace>. ` +
             'The SDK derives the namespace from the project file name, so namespaces would follow ' +
-            'solutionName instead. See docs/customizing-the-template.md.'
+            'solutionName instead. See docs/ARCHITECTURE.md.'
         );
       }
     }
@@ -147,7 +145,7 @@ function stageConfig(root, config, manifest) {
     // Generated-region drift.
     let drift = [];
     try {
-      drift = findDrift(root, plannedRegions(root, config, manifest));
+      drift = findDrift(root, plannedRegions(root, config));
     } catch (error) {
       messages.push(`Could not evaluate generated regions: ${error.message}`);
     }
@@ -335,7 +333,7 @@ function stageAgentConfig(root) {
 
     return {
       status: errors.length > 0 ? 'failed' : 'passed',
-      commands: ['(in-process: .claude/ and .mcp.json validation)'],
+      commands: ['(in-process: .claude/ validation)'],
       messages:
         findings.length === 0
           ? ['no findings']

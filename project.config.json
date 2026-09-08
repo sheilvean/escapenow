@@ -8,18 +8,14 @@
     "tests": "tests"
   },
   "architecture": {
-    "profile": "layered",
-    "modules": []
+    "profile": "layered"
   },
   "documentation": {
     "language": "en"
   },
   "integrations": {
     "database": "none",
-    "deployment": "none",
-    "mcp": {
-      "enabled": false
-    }
+    "deployment": "none"
   },
   "openspec": {
     "changePolicy": {
@@ -30,13 +26,6 @@
       "enabled": true,
       "scope": "repository",
       "requireZeroActiveChanges": true
-    }
-  },
-  "template": {
-    "initialized": true,
-    "appliedTokens": {
-      "solutionName": "EscapeNow",
-      "rootNamespace": "EscapeNow"
     }
   }
 }

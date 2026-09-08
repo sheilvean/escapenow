@@ -30,10 +30,6 @@ export const REQUIRED_CHECKS = {
     aggregate: 'required',
     jobs: ['checks', 'dependency-scan', 'secret-scan', 'archive-gate'],
   },
-  'template.yml': {
-    aggregate: 'template-required',
-    jobs: ['portability', 'self-check'],
-  },
 };
 
 /** Actions allowed at all, pinned by SHA. Anything else needs a decision, not a commit. */

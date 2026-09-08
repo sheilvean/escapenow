@@ -27,7 +27,7 @@ Microsoft.Testing.Platform option first.
 | Project | What belongs in it |
 | --- | --- |
 | `tests/EscapeNow.UnitTests` | rules and orchestration, no I/O, no host |
-| `tests/EscapeNow.ArchitectureTests` | dependency direction, cycles, module boundaries |
+| `tests/EscapeNow.ArchitectureTests` | dependency direction and cycles |
 | `tests/EscapeNow.IntegrationTests` | the real host, started, driven over HTTP |
 | `tests/fixtures/` | libraries that violate architecture rules on purpose |
 
@@ -40,7 +40,7 @@ exercises rather than adding a trait.
 - `TestContext.Current.CancellationToken` for every awaited call in a test. xUnit v3 cancels a
   test that overruns, and a test that ignores the token hangs the run instead of failing.
 - Hand-written fakes for ports, not a mocking framework. The ports here have one or two members;
-  a fake reads better than a chain of setup calls, and the template does not impose a mock library.
+  a fake reads better than a chain of setup calls, and no mock library is imposed here.
 - An integration test drives the real `Program` through `WebApplicationFactory`. Constructing the
   service classes directly does not prove the application boots, which is the thing worth knowing.
 - Assert on the status code as well as the body when the status code carries meaning: a load

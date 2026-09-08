@@ -138,10 +138,28 @@ accepted ADR is superseded, never rewritten.
 
 ## Working with the agent
 
-`CLAUDE.md` is what the agent reads on every session; `.claude/rules/` holds the scoped rules. If
-you find yourself repeating an instruction to it, that belongs in a rule — see
-`docs/learning-loop.md` for turning an observation into one, which is a reviewed change like any
-other.
+`CLAUDE.md` is what the agent reads on every session; `.claude/rules/` holds the scoped rules.
+
+If you find yourself correcting the agent on the same thing repeatedly, that is worth encoding —
+but write down what happened before deciding what to change, and prefer the strongest shape that
+fits, not the easiest:
+
+| Shape | When | Cost |
+| --- | --- | --- |
+| a test | the pattern is mechanically detectable | highest value: it fails on its own |
+| an architecture rule | it is a dependency or boundary question | needs a negative fixture too |
+| a check stage | detectable, but not as a test | one place, runs everywhere |
+| a rule file | a judgement call a person has to make | advisory only; costs context every session |
+| a skill | a procedure with steps and stopping conditions | loaded on demand, so cheap |
+
+Prefer the top of that table. A file in `.claude/rules/` is text in a prompt — influential, not
+binding — and it costs context on every session whether the task needs it or not. If the pattern
+can be a test, make it a test: the agent cannot argue with a red test.
+
+Two occurrences is a coincidence; three is a pattern. Either way it becomes a reviewed change like
+any other. Nothing here observes your sessions or rewrites its own rules: a loop that rewrote the
+rules from observed behaviour would encode whatever the agent happened to do, mistakes included,
+and call it policy.
 
 Do not let the agent widen its own permissions, weaken a rule, or archive a change. Those are
 yours.

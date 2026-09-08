@@ -106,7 +106,7 @@ such as `main` or a pattern such as `feature/*`.
 
 ### Requirement: Per-pull-request scope is an explicit extension
 
-The template SHALL document an optional scope limited to the changes touched by the current pull
+The repository SHALL document an optional scope limited to the changes touched by the current pull
 request, and SHALL state that it is weaker than the default repository-wide requirement of zero
 active changes. It SHALL NOT be presented as equivalent to the default.
 

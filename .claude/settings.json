@@ -63,7 +63,6 @@
       "Bash(dotnet add *)",
       "Bash(dotnet new *)",
       "Edit(.claude/settings.json)",
-      "Edit(.mcp.json)",
       "Edit(.github/workflows/**)",
       "Edit(global.json)",
       "Edit(Directory.Packages.props)",
@@ -80,23 +79,11 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/post-change-feedback.mjs"],
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-change-feedback.mjs"
+            ],
             "timeout": 45,
             "statusMessage": "Checking the file you just changed"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/protected-config-warning.mjs"],
-            "timeout": 10,
-            "statusMessage": "Checking whether this file is protected"
           }
         ]
       }
@@ -107,7 +94,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-openspec-reminder.mjs"],
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-openspec-reminder.mjs"
+            ],
             "timeout": 20,
             "statusMessage": "Checking for an active OpenSpec change"
           }

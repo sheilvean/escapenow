@@ -15,15 +15,13 @@ that can be enforced mechanically.
 | Node tooling versions, including the OpenSpec CLI | `package.json` + `package-lock.json` | the `specs` stage fails when the installed CLI differs from the lockfile |
 | NuGet feeds | `NuGet.config` | `<clear/>` means no machine-level feed leaks in |
 | Code style and naming | `.editorconfig` | the `format` stage verifies it; `EnforceCodeStyleInBuild` fails the build |
-| Project identity, layout, architecture profile, module registry, policy | `project.config.json` | validated against `project.config.schema.json`, `additionalProperties: false` throughout |
-| Substitution tokens for both start paths | `tools/rename.manifest.json` | `tools/tests/rename-manifest.test.mjs` fails if `.template.config/template.json` disagrees |
+| Project identity, layout, architecture profile, policy | `project.config.json` | validated against `project.config.schema.json`, `additionalProperties: false` throughout |
 | The architecture rules themselves | `tests/EscapeNow.ArchitectureTests/Support/LayeredProfile.cs` | both the assembly-level and project-reference rules read it, so they cannot disagree |
 | What the system must do | `openspec/specs/` | `openspec validate --all --strict` in the `specs` stage |
 | Work in flight | `openspec/changes/` | the archive gate reads `openspec list --json` |
 | Why a durable architectural decision was made | `docs/adr/` | review; nothing mechanical can check a rationale |
 | Permission boundaries, hooks | `.claude/settings.json` | the `agent-config` stage |
 | CI workflows and the required check names | `.github/workflows/` | the `workflows` stage: actionlint plus the documented safety properties; `docs/github-setup.md` must name every required job, and every job it names must exist |
-| Which MCP servers exist | `.mcp.json` + `enabledMcpjsonServers` | the `agent-config` stage; `enableAllProjectMcpServers` must stay false |
 | Project context for planning sessions | `openspec/project-context.md` | rendered into `openspec/config.yaml`; drift fails the `config` stage |
 | The current implementation | the code | tests |
 
@@ -37,7 +35,6 @@ Never edit these by hand. The generator wins, and your edit disappears at the ne
 | `openspec/config.yaml`, region `project-context` | `node tools/repo.mjs sync` | `openspec/project-context.md` |
 | `.claude/commands/opsx/**` | `openspec init` / `openspec update` | the pinned OpenSpec CLI |
 | `.claude/skills/openspec-*/**` | `openspec init` / `openspec update` | the pinned OpenSpec CLI |
-| `project.config.json`, the `template` object | `node tools/repo.mjs init` | the tokens applied at initialization |
 | `**/packages.lock.json` | `dotnet restore` | `Directory.Packages.props` |
 | `artifacts/**` | `dotnet build` | the sources |
 
@@ -47,8 +44,8 @@ outside the `BEGIN GENERATED` / `END GENERATED` markers is yours, and `sync` lea
 ## Never generated
 
 `openspec/specs/`, `openspec/changes/`, `docs/adr/`, and every file not listed above. No command in
-this repository overwrites them. `init` and `sync` stop and report a conflict rather than
-overwriting anything they do not own.
+this repository overwrites them. `sync` stops and reports a conflict rather than
+overwriting anything it does not own.
 
 ## The boundary with OpenSpec
 
@@ -62,10 +59,10 @@ the region will no longer match `openspec/project-context.md`, and `sync` restor
 
 ## Exemptions
 
-Two places are allowed to contain literal application and module names, because they exist to
-exercise the code that forbids them elsewhere:
+Two places are allowed to contain literal application names, because they exist to exercise the
+code that forbids them elsewhere:
 
-- `tests/fixtures/**` — fixture modules and layers need concrete names to be fixtures.
+- `tests/fixtures/**` — fixture layers need concrete names to be fixtures.
 - `tools/tests/**` — the tooling tests fabricate configurations and graphs.
 
 `tools/lib/agentconfig.mjs` is also exempt from the forbidden-literal scan: it contains the pattern

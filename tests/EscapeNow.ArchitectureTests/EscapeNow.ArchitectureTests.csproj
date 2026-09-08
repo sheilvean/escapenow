@@ -13,8 +13,6 @@
          rule set, so a deliberate violation here can never mask or trigger a real finding. -->
     <ProjectReference Include="../fixtures/Fixtures.Layers.Domain/Fixtures.Layers.Domain.csproj" />
     <ProjectReference Include="../fixtures/Fixtures.Layers.Infrastructure/Fixtures.Layers.Infrastructure.csproj" />
-    <ProjectReference Include="../fixtures/Fixtures.Modules.Alpha/Fixtures.Modules.Alpha.csproj" />
-    <ProjectReference Include="../fixtures/Fixtures.Modules.Beta/Fixtures.Modules.Beta.csproj" />
   </ItemGroup>
 
   <ItemGroup>

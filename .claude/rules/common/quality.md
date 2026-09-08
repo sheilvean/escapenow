@@ -40,7 +40,7 @@ description: What "done" means here, and how test results must be reported.
 
 ## Dependencies
 
-- A new dependency must solve a problem the template actually has, and it must be free to use in
+- A new dependency must solve a problem this repository actually has, and it must be free to use in
   every configuration — no licence key, no paid tier, no per-seat entitlement for any user.
 - Versions are pinned exactly, in `Directory.Packages.props` for NuGet and `package.json` plus the
   lockfile for Node. Do not introduce a floating range.

@@ -7,12 +7,12 @@ makes that configuration itself something CI validates rather than trusts.
 
 ### Requirement: Project-scoped configuration only
 
-The template SHALL place its agent configuration under the repository's `.claude/` directory and
+The repository SHALL place its agent configuration under the repository's `.claude/` directory and
 SHALL NOT install anything into the user's home directory. Local configuration and session data
 SHALL be excluded from version control.
 
 #### Scenario: No home-directory installation
-- **WHEN** `init` and `sync` complete
+- **WHEN** `sync` completes
 - **THEN** no file outside the repository has been created or modified
 
 #### Scenario: Local settings are ignored by Git
@@ -48,11 +48,11 @@ used where it helps.
 
 ### Requirement: Skills with a complete contract
 
-The template SHALL provide a `repo-check` skill for running the shared checks and interpreting their
-output, and a `repo-review` skill for reviewing an implementation against its change contract.
-Migration and deployment procedures SHALL exist only for integrations the configuration enables.
-Every skill SHALL have a valid `SKILL.md` stating its usage conditions, inputs, steps, verification
-and stopping conditions.
+The repository SHALL provide a `repo-check` skill for running the shared checks and interpreting
+their output, and a `repo-review` skill for reviewing an implementation against its change
+contract. Migration and deployment procedures SHALL exist only for integrations the configuration
+enables. Every skill SHALL have a valid `SKILL.md` stating its usage conditions, inputs, steps,
+verification and stopping conditions.
 
 #### Scenario: Skill frontmatter is valid
 - **WHEN** the agent-configuration check runs
@@ -65,7 +65,7 @@ and stopping conditions.
 
 ### Requirement: Restricted review subagents
 
-The template SHALL provide a `code-reviewer` and an `architecture-reviewer` subagent, each with a
+The repository SHALL provide a `code-reviewer` and an `architecture-reviewer` subagent, each with a
 restricted tool set. By default they SHALL NOT edit files and SHALL NOT perform deployments. The
 documentation SHALL state that a subagent's review does not replace a human review.
 
@@ -92,21 +92,14 @@ workflow competing with OpenSpec.
 - **WHEN** the agent-configuration check compares command names with skill names
 - **THEN** no collision is reported
 
-### Requirement: MCP is present but inactive by default
-
-`.mcp.json` SHALL be valid and SHALL declare no active servers by default. Integration examples
-SHALL live separately and require explicit opt-in. Secrets SHALL come from an external mechanism and
-SHALL never be stored in the repository. Settings SHALL NOT automatically trust all MCP servers.
-
-#### Scenario: No servers are active by default
-- **WHEN** the agent-configuration check reads `.mcp.json` and the settings
-- **THEN** the server list is empty and no setting enables all project MCP servers
-
 ### Requirement: Least-privilege permissions
 
 Settings SHALL deny reads of credential-bearing paths, deny shell network and remote-access
 commands, and allow only a documented set of development commands. Settings SHALL NOT enable a
-bypass-permissions mode or a broad allow-all rule.
+bypass-permissions mode or a broad allow-all rule. Every file that changes what the agent is
+permitted to do — the settings themselves, the project configuration, the pinned toolchain, the
+package versions and the CI workflows — SHALL sit behind an `ask` rule, and that coverage SHALL be
+validated rather than assumed.
 
 #### Scenario: A forbidden setting fails the check
 - **WHEN** settings enable bypassing permissions or an allow-all tool rule
@@ -116,12 +109,17 @@ bypass-permissions mode or a broad allow-all rule.
 - **WHEN** the check inspects the deny list
 - **THEN** environment files and the documented credential directories are present
 
+#### Scenario: A protected configuration file dropped from the ask list fails the check
+- **WHEN** a protected configuration file is not covered by an `ask` rule
+- **THEN** the agent-configuration check fails and names the file and the rule to add
+
 ### Requirement: Small, testable hooks
 
-Hooks SHALL be limited to fast feedback after relevant file changes, a Stop reminder about an active
-OpenSpec change, and an optional warning when a protected configuration file changes. Hooks SHALL
-read and write valid JSON, declare timeouts, resolve paths safely, and SHALL NOT invoke themselves
-recursively. A hook SHALL NOT run a full build or an end-to-end suite after every write.
+Hooks SHALL be limited to fast feedback after relevant file changes and a Stop reminder about an
+active OpenSpec change. A hook SHALL NOT be added for the sole purpose of narrating a constraint
+the permission rules already enforce. Hooks SHALL read and write valid JSON, declare timeouts,
+resolve paths safely, and SHALL NOT invoke themselves recursively. A hook SHALL NOT run a full
+build or an end-to-end suite after every write.
 
 #### Scenario: Malformed hook input does not crash
 - **WHEN** a hook receives input that is not valid JSON
@@ -131,6 +129,10 @@ recursively. A hook SHALL NOT run a full build or an end-to-end suite after ever
 - **WHEN** the post-change hook runs
 - **THEN** it executes only file-scoped checks and does not invoke a solution build or an
   end-to-end suite
+
+#### Scenario: A protected configuration file is guarded by the permission rules
+- **WHEN** an edit is attempted against a file the repository treats as protected configuration
+- **THEN** the permission rules prompt a human, and no hook is relied upon to convey the constraint
 
 ### Requirement: The Stop hook reminds without deciding
 

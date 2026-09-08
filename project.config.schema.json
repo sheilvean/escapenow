@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/project.config.schema.json",
   "title": "Project configuration",
-  "description": "Identity, layout, architecture profile and enabled integrations of a repository generated from this template. This file is not a dependency manager: see docs/sources-of-truth.md.",
+  "description": "Identity, layout, architecture profile and enabled integrations of this repository. This file is not a dependency manager: see .claude/rules/common/sources-of-truth.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,8 +12,7 @@
     "architecture",
     "documentation",
     "integrations",
-    "openspec",
-    "template"
+    "openspec"
   ],
   "properties": {
     "$schema": {
@@ -50,32 +49,11 @@
     "architecture": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile", "modules"],
+      "required": ["profile"],
       "properties": {
         "profile": {
           "enum": ["layered", "custom"],
-          "description": "layered: the built-in dependency direction is enforced. custom: layer-direction rules report themselves not applicable, while cycle and module-registry rules still run. See docs/ARCHITECTURE.md."
-        },
-        "modules": {
-          "type": "array",
-          "description": "Module registry. Empty means the solution has no modules. Architecture tests are driven by this registry and by convention, so adding an entry requires no test edit.",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "contract"],
-            "properties": {
-              "name": {
-                "$ref": "#/$defs/pascalIdentifier",
-                "description": "Module name, matching its project name suffix."
-              },
-              "contract": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
-                "description": "Namespace suffix, relative to the module root, that other modules may depend on."
-              }
-            }
-          }
+          "description": "layered: the built-in dependency direction is enforced. custom: layer-direction rules report themselves not applicable, while the dependency-cycle rules still run. See docs/ARCHITECTURE.md."
         }
       }
     },
@@ -94,7 +72,7 @@
     "integrations": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["database", "deployment", "mcp"],
+      "required": ["database", "deployment"],
       "properties": {
         "database": {
           "enum": ["none"],
@@ -103,17 +81,6 @@
         "deployment": {
           "enum": ["none"],
           "description": "Deployment integration. Only 'none' is implemented; a deployment stage reports 'not configured', never 'passed'."
-        },
-        "mcp": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["enabled"],
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "Opt-in for MCP servers. When false, .mcp.json must declare no servers."
-            }
-          }
         }
       }
     },
@@ -155,23 +122,6 @@
               "description": "Whether the gate requires the active-change count in scope to be zero before the final merge."
             }
           }
-        }
-      }
-    },
-    "template": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["initialized", "appliedTokens"],
-      "description": "State written by tools/repo.mjs. Distinguishes a first initialization from a later reconfiguration; do not edit by hand.",
-      "properties": {
-        "initialized": {
-          "type": "boolean",
-          "description": "False in the template itself. Set to true by 'repo.mjs init', which then refuses to run again."
-        },
-        "appliedTokens": {
-          "type": "object",
-          "description": "Token values applied at initialization, keyed by the token names declared in tools/rename.manifest.json.",
-          "additionalProperties": { "type": "string" }
         }
       }
     }
