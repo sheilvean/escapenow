@@ -1,0 +1,106 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+
+[*.{csproj,props,targets,slnx,xml,config}]
+indent_size = 2
+
+[*.md]
+# Trailing whitespace is meaningful in Markdown line breaks.
+trim_trailing_whitespace = false
+
+[*.cs]
+
+#### Language conventions ####
+
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+csharp_prefer_braces = when_multiline:suggestion
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+
+#### Naming ####
+
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface
+dotnet_naming_rule.interfaces_start_with_i.style = prefix_i_pascal
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_symbols.interface.applicable_accessibilities = *
+dotnet_naming_style.prefix_i_pascal.required_prefix = I
+dotnet_naming_style.prefix_i_pascal.capitalization = pascal_case
+
+dotnet_naming_rule.types_are_pascal_case.severity = warning
+dotnet_naming_rule.types_are_pascal_case.symbols = type_and_member
+dotnet_naming_rule.types_are_pascal_case.style = pascal
+dotnet_naming_symbols.type_and_member.applicable_kinds = class,struct,enum,delegate,method,property,event
+dotnet_naming_symbols.type_and_member.applicable_accessibilities = *
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+# Declared before the instance-field rule: naming rules are matched in file order, and a const or
+# static readonly field would otherwise be caught by the underscore rule below.
+dotnet_naming_rule.constants_are_pascal_case.severity = warning
+dotnet_naming_rule.constants_are_pascal_case.symbols = constant_field
+dotnet_naming_rule.constants_are_pascal_case.style = pascal
+dotnet_naming_symbols.constant_field.applicable_kinds = field
+dotnet_naming_symbols.constant_field.applicable_accessibilities = *
+dotnet_naming_symbols.constant_field.required_modifiers = const
+
+dotnet_naming_rule.private_static_readonly_are_pascal_case.severity = warning
+dotnet_naming_rule.private_static_readonly_are_pascal_case.symbols = private_static_readonly_field
+dotnet_naming_rule.private_static_readonly_are_pascal_case.style = pascal
+dotnet_naming_symbols.private_static_readonly_field.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_field.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_field.required_modifiers = static,readonly
+
+dotnet_naming_rule.private_fields_are_camel_with_underscore.severity = warning
+dotnet_naming_rule.private_fields_are_camel_with_underscore.symbols = private_field
+dotnet_naming_rule.private_fields_are_camel_with_underscore.style = underscore_camel
+dotnet_naming_symbols.private_field.applicable_kinds = field
+dotnet_naming_symbols.private_field.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+#### Analyzer severities that the warning policy turns into build errors ####
+
+# CA1848 asks for LoggerMessage delegates. Justified exception for a starter template:
+# it would force source-generated logging boilerplate into example code. Revisit when the
+# application has real hot logging paths.
+dotnet_diagnostic.CA1848.severity = none
+
+# CA1515 wants public types in an application made internal. The template's Domain and
+# Application types are deliberately public: they form the surface the architecture tests
+# and other layers depend on.
+dotnet_diagnostic.CA1515.severity = none
+
+[tests/**/*.cs]
+# Test methods use underscores to describe the scenario under test.
+dotnet_naming_rule.types_are_pascal_case.severity = none
+# Tests legitimately construct throwaway objects and assert on them.
+dotnet_diagnostic.CA1707.severity = none
+
+[tests/fixtures/**/*.cs]
+# Negative fixtures exist to violate the architecture rules on purpose. Style analysis on
+# them adds noise without adding value; the architecture tests are what judges these files.
+dotnet_analyzer_diagnostic.severity = none

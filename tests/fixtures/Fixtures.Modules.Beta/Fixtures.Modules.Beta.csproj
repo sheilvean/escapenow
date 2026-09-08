@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Fixtures.Modules.Alpha/Fixtures.Modules.Alpha.csproj" />
+  </ItemGroup>
+
+</Project>

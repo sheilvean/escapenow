@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain depends on nothing in this solution and on no framework beyond the base
+       class library. The architecture tests enforce both, over real references. -->
+
+</Project>

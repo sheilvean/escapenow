@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The "wrong side" of the deliberate dependency in Fixtures.Layers.Domain. -->
+</Project>

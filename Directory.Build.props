@@ -1,0 +1,47 @@
+<Project>
+
+  <!-- Applies to every project in the repository. Target framework and the warning policy
+       are owned here; NuGet versions are owned by Directory.Packages.props and the SDK
+       version by global.json. See docs/sources-of-truth.md.
+
+       RootNamespace and AssemblyName are deliberately not set: the SDK defaults them to
+       the project file name (EscapeNow.Domain -> namespace EscapeNow.Domain), so a
+       rename of the project files is sufficient and there is no second place to update. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Warning policy">
+    <!-- Deliberate policy: warnings fail the build. A warning that must be tolerated is
+         suppressed at its source with a justification, so the exception is visible in
+         review rather than hidden in a repository-wide setting. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Reproducibility">
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- A committed packages.lock.json per project makes restore reproducible; CI restores
+         in locked mode, so an unexpected version resolution fails instead of sliding through. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Layout">
+    <!-- Build output goes to artifacts/ instead of per-project bin/obj, so tooling globs
+         and .gitignore stay simple. ArtifactsPath is pinned to this file's directory: the
+         nested Directory.Build.props files under tests/ import this one, and without an
+         explicit path each import level would create its own artifacts/ directory. -->
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+
+</Project>

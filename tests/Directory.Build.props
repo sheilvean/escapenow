@@ -1,0 +1,28 @@
+<Project>
+
+  <!-- Inherit the repository-wide policy, then add what only the test tree needs. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Test projects only. Fixtures under tests/fixtures/ are plain libraries that exist to
+       violate the architecture rules, so they must not become test executables. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+    <!-- One runner for the whole repository: Microsoft.Testing.Platform, selected in
+         global.json. No VSTest flags are used anywhere. -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <TestingPlatformCaptureOutput>false</TestingPlatformCaptureOutput>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <PackageReference Include="xunit.v3" />
+    <!-- Declared once here rather than repeated as a using in every test file. -->
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

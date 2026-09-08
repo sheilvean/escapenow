@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/project.config.schema.json",
+  "title": "Project configuration",
+  "description": "Identity, layout, architecture profile and enabled integrations of a repository generated from this template. This file is not a dependency manager: see docs/sources-of-truth.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "solutionName",
+    "rootNamespace",
+    "paths",
+    "architecture",
+    "documentation",
+    "integrations",
+    "openspec",
+    "template"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Pointer to this schema, for editor validation."
+    },
+    "solutionName": {
+      "$ref": "#/$defs/namespace",
+      "description": "Name of the solution and the prefix of every project name. Dots are allowed, because a dotted prefix such as Contoso.Orders is ordinary in .NET: the projects then become Contoso.Orders.Domain and so on."
+    },
+    "rootNamespace": {
+      "$ref": "#/$defs/namespace",
+      "description": "Root namespace of every project in the solution."
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["solutionFile", "src", "tests"],
+      "properties": {
+        "solutionFile": {
+          "$ref": "#/$defs/relativePath",
+          "description": "Solution file, relative to the repository root."
+        },
+        "src": {
+          "$ref": "#/$defs/relativePath",
+          "description": "Directory holding production projects."
+        },
+        "tests": {
+          "$ref": "#/$defs/relativePath",
+          "description": "Directory holding test projects."
+        }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "modules"],
+      "properties": {
+        "profile": {
+          "enum": ["layered", "custom"],
+          "description": "layered: the built-in dependency direction is enforced. custom: layer-direction rules report themselves not applicable, while cycle and module-registry rules still run. See docs/ARCHITECTURE.md."
+        },
+        "modules": {
+          "type": "array",
+          "description": "Module registry. Empty means the solution has no modules. Architecture tests are driven by this registry and by convention, so adding an entry requires no test edit.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "contract"],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/pascalIdentifier",
+                "description": "Module name, matching its project name suffix."
+              },
+              "contract": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+                "description": "Namespace suffix, relative to the module root, that other modules may depend on."
+              }
+            }
+          }
+        }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Za-z0-9]{2,8})*$",
+          "description": "BCP 47 language subtag for generated instructions and OpenSpec artifacts. Repository code and file names stay English regardless."
+        }
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["database", "deployment", "mcp"],
+      "properties": {
+        "database": {
+          "enum": ["none"],
+          "description": "Persistence integration. Only 'none' is implemented; a database stage reports 'not configured', never 'passed'."
+        },
+        "deployment": {
+          "enum": ["none"],
+          "description": "Deployment integration. Only 'none' is implemented; a deployment stage reports 'not configured', never 'passed'."
+        },
+        "mcp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Opt-in for MCP servers. When false, .mcp.json must declare no servers."
+            }
+          }
+        }
+      }
+    },
+    "openspec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changePolicy", "archiveGate"],
+      "properties": {
+        "changePolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "allowTrivial"],
+          "properties": {
+            "default": {
+              "enum": ["standard"],
+              "description": "Class assigned to a change whose class is not explicitly established. Only 'standard' is permitted, so triviality is always an explicit, argued exception."
+            },
+            "allowTrivial": {
+              "type": "boolean",
+              "description": "Whether the Trivial class may be used at all. Trivial still requires tests, review and CI."
+            }
+          }
+        },
+        "archiveGate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "scope", "requireZeroActiveChanges"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the archive gate runs. Disabling it is a policy decision, not a way to pass."
+            },
+            "scope": {
+              "enum": ["repository", "pull-request"],
+              "description": "repository: the default, requiring zero active changes repository-wide. pull-request: a documented, weaker extension limited to changes touched by the current pull request. See docs/change-workflow.md."
+            },
+            "requireZeroActiveChanges": {
+              "type": "boolean",
+              "description": "Whether the gate requires the active-change count in scope to be zero before the final merge."
+            }
+          }
+        }
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initialized", "appliedTokens"],
+      "description": "State written by tools/repo.mjs. Distinguishes a first initialization from a later reconfiguration; do not edit by hand.",
+      "properties": {
+        "initialized": {
+          "type": "boolean",
+          "description": "False in the template itself. Set to true by 'repo.mjs init', which then refuses to run again."
+        },
+        "appliedTokens": {
+          "type": "object",
+          "description": "Token values applied at initialization, keyed by the token names declared in tools/rename.manifest.json.",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "pascalIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "description": "A single C# identifier: a letter or underscore followed by letters, digits or underscores."
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "description": "Dot-separated C# identifiers."
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$))[^:*?\"<>|]+$",
+      "description": "A forward-slash relative path inside the repository. Absolute paths, backslashes and parent traversal are rejected."
+    }
+  }
+}

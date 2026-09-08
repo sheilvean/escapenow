@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The host composes the application and registers dependencies. Business logic does
+       not live here; the architecture tests check that endpoints stay thin. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../EscapeNow.Application/EscapeNow.Application.csproj" />
+    <ProjectReference Include="../EscapeNow.Infrastructure/EscapeNow.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The integration test project drives this host through WebApplicationFactory. -->
+    <InternalsVisibleTo Include="EscapeNow.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

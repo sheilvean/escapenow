@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A well-formed fixture module: a Contracts surface plus internals that other modules
+       must not reach. Registered in the fixture registry as contract "Contracts". -->
+</Project>

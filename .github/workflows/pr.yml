@@ -1,0 +1,264 @@
+# Pull request checks.
+#
+# Every job calls `node tools/repo.mjs ...`. There is no second implementation of any rule here,
+# so a green local run and a green CI run mean the same thing — see docs/adr/0005.
+#
+# Safety properties, each deliberate:
+#   - least-privilege permissions at the workflow level, tightened further per job;
+#   - every action pinned to a commit SHA, with its version in a comment;
+#   - no pull_request_target, so code from a fork never runs in a privileged context;
+#   - no job references a repository secret, so a fork pull request cannot reach one;
+#   - the `required` job asserts each other job's result explicitly, so a SKIPPED or CANCELLED
+#     required job cannot produce a green aggregate.
+#
+# Required check names are an interface. Changing one means updating the repository ruleset;
+# docs/github-setup.md lists them.
+
+name: pr
+
+on:
+  pull_request:
+    # ready_for_review matters: a draft that becomes ready must be re-checked, because the
+    # archive gate is what a draft is allowed to fail.
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  push:
+    branches-ignore:
+      # Pull requests already cover branch pushes; this keeps the default branch covered without
+      # naming it. The policy never depends on a branch being called anything in particular.
+      - "gh-readonly-queue/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_CLI_UI_LANGUAGE: en
+  NO_COLOR: "1"
+  CI: "true"
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          # Reads global.json, so the SDK version has exactly one owner.
+          global-json-file: global.json
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - name: Install pinned Node tooling
+        # ci, not install: it installs exactly what the lockfile says and fails if package.json
+        # and the lockfile disagree.
+        run: npm ci
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Check
+        # The nine stages. --ci adds machine-readable output and the pull-request-only checks.
+        run: node tools/repo.mjs check --ci
+
+      - name: Report
+        if: always()
+        run: node tools/repo.mjs check --ci --json > check-report.json || true
+
+      - name: Upload the check report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: check-report
+          path: check-report.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+      - run: dotnet restore
+
+      - name: NuGet vulnerabilities
+        # `dotnet list package --vulnerable` exits 0 even when it finds something, so the output
+        # is inspected. Both built into the SDK: no paid scanner, no licence key.
+        run: |
+          set -euo pipefail
+          dotnet list package --vulnerable --include-transitive > nuget-vulnerable.txt
+          cat nuget-vulnerable.txt
+          if grep -qiE '>\s*(Critical|High|Moderate|Low)\b' nuget-vulnerable.txt; then
+            echo "::error::A referenced NuGet package has a known vulnerability."
+            exit 1
+          fi
+
+      - name: Node vulnerabilities
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      # The gitleaks CLI is MIT. gitleaks-action is deliberately NOT used: it declares no
+      # recognised licence and v2+ requires a licence key for organizations, which makes it free
+      # in one configuration and paid in another. See docs/adr/0007.
+      # Taken from gitleaks_8.30.1_checksums.txt in the release, read 2026-09-07.
+      # On upgrade, update BOTH lines — docs/updating-dependencies.md has the command.
+      GITLEAKS_VERSION: "8.30.1"
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: a secret committed earlier in the branch must be found too.
+          fetch-depth: 0
+
+      - name: Download and verify gitleaks
+        # Fails closed: on a checksum mismatch the archive is deleted and the binary is never
+        # executed. Never "fix" a mismatch by removing this check — investigate it.
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+
+          # The download is skipped when the archive is already present. That makes the step
+          # re-runnable, and it makes the verification below testable without a network: the
+          # test in tools/tests/workflows.test.mjs plants an archive with a known digest and
+          # executes this exact script. A fail-closed branch that has never been executed is a
+          # fail-closed branch nobody has seen work.
+          if [ ! -f "$archive" ]; then
+            curl --fail --silent --show-error --location --retry 3 --output "$archive" "$url"
+          fi
+
+          actual="$(sha256sum "$archive" | cut -d' ' -f1)"
+          if [ "$actual" != "$GITLEAKS_SHA256" ]; then
+            rm -f "$archive"
+            echo "::error::gitleaks checksum mismatch."
+            echo "  expected: $GITLEAKS_SHA256"
+            echo "  actual:   $actual"
+            echo "The binary was NOT executed. Either the pinned checksum is stale (update it in"
+            echo "this workflow, see docs/updating-dependencies.md) or the download was tampered with."
+            exit 1
+          fi
+
+          tar -xzf "$archive" gitleaks
+          chmod +x gitleaks
+          ./gitleaks version
+
+      - name: Scan
+        # --redact so a finding never prints the secret into a public log.
+        run: ./gitleaks dir . --redact --no-banner --verbose
+
+  archive-gate:
+    name: archive-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The gate compares change directories removed in the range against archive entries
+          # added in it, so it needs history rather than a single commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch the base ref
+        # The base branch is read from the event payload, never assumed to be called anything.
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=0 origin "+refs/heads/${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
+
+      - name: Gate
+        # Runs for drafts too, and fails for them the same way. Draft state is deliberately not an
+        # input to the policy: a draft may fail this while the fast checks still run and report.
+        run: node tools/repo.mjs archive-gate
+
+  required:
+    name: required
+    # The aggregate. Marking THIS as the single required check is the safer configuration, because
+    # it fails when any needed job was skipped or cancelled — which a per-job requirement does not
+    # always catch.
+    if: always()
+    needs: [checks, dependency-scan, secret-scan, archive-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      # Each result arrives as its own variable rather than as a JSON blob to be queried. Two
+      # reasons: it needs no jq, and it is plain enough to run outside CI — which is what
+      # tools/tests/workflows.test.mjs does, extracting this exact script from this file and
+      # executing it against fabricated results. A conditional nobody can test is a conditional
+      # nobody has tested.
+      - name: Assert every required job succeeded
+        env:
+          RESULT_CHECKS: ${{ needs.checks.result }}
+          RESULT_DEPENDENCY_SCAN: ${{ needs.dependency-scan.result }}
+          RESULT_SECRET_SCAN: ${{ needs.secret-scan.result }}
+          RESULT_ARCHIVE_GATE: ${{ needs.archive-gate.result }}
+        run: |
+          set -euo pipefail
+
+          failed=0
+
+          # Every required job must be exactly "success". failure, cancelled, skipped and an
+          # empty value all fail here, so a required job that silently did not run cannot
+          # produce a green aggregate.
+          for entry in \
+            "checks:${RESULT_CHECKS:-missing}" \
+            "dependency-scan:${RESULT_DEPENDENCY_SCAN:-missing}" \
+            "secret-scan:${RESULT_SECRET_SCAN:-missing}" \
+            "archive-gate:${RESULT_ARCHIVE_GATE:-missing}"
+          do
+            job="${entry%%:*}"
+            result="${entry#*:}"
+            printf '%-18s %s\n' "$job" "$result"
+
+            if [ "$result" != "success" ]; then
+              echo "::error::Required job '$job' reported '$result', not 'success'."
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "A skipped or cancelled required job is not a pass."
+            exit 1
+          fi
+
+          echo "All required jobs succeeded."

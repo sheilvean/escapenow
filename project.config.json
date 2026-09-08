@@ -1,0 +1,42 @@
+{
+  "$schema": "./project.config.schema.json",
+  "solutionName": "EscapeNow",
+  "rootNamespace": "EscapeNow",
+  "paths": {
+    "solutionFile": "EscapeNow.slnx",
+    "src": "src",
+    "tests": "tests"
+  },
+  "architecture": {
+    "profile": "layered",
+    "modules": []
+  },
+  "documentation": {
+    "language": "en"
+  },
+  "integrations": {
+    "database": "none",
+    "deployment": "none",
+    "mcp": {
+      "enabled": false
+    }
+  },
+  "openspec": {
+    "changePolicy": {
+      "default": "standard",
+      "allowTrivial": true
+    },
+    "archiveGate": {
+      "enabled": true,
+      "scope": "repository",
+      "requireZeroActiveChanges": true
+    }
+  },
+  "template": {
+    "initialized": true,
+    "appliedTokens": {
+      "solutionName": "EscapeNow",
+      "rootNamespace": "EscapeNow"
+    }
+  }
+}

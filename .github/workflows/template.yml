@@ -1,0 +1,138 @@
+# Validation of the template itself.
+#
+# The pr.yml workflow proves the base repository is healthy. This one proves the *generator* works:
+# that two applications with different names can be produced from one set of sources, that both
+# build and pass their own checks, and that the guardrails actually fail when they should.
+#
+# It runs the same tooling entry points as everything else — no separate implementation of the
+# rules — and it runs on Windows as well as Linux, because a path with a space and a `.cmd` shim
+# are exactly where portability breaks.
+
+name: template
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "tools/**"
+      - ".template.config/**"
+      - "project.config.json"
+      - "project.config.schema.json"
+      - ".github/workflows/template.yml"
+      - "global.json"
+      - "Directory.*.props"
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_CLI_UI_LANGUAGE: en
+  NO_COLOR: "1"
+  CI: "true"
+
+jobs:
+  portability:
+    name: portability (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both, deliberately: Windows is where a path with a space, a backslash and an npm .cmd
+        # shim break tooling that only ever ran on Linux.
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate two applications and prove the guardrails fail when they should
+        # One script, so the same suite runs locally. Everything it asserts is listed in
+        # openspec/changes/.../tasks.md section 9.
+        shell: bash
+        run: node tools/template-tests.mjs --verbose
+
+  self-check:
+    name: self-check
+    # The template must also be a healthy repository in its own right, on the same commit that
+    # the portability suite exercised.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+      - run: dotnet restore
+      - run: node tools/repo.mjs doctor
+      - run: node tools/repo.mjs check --ci
+
+  template-required:
+    name: template-required
+    if: always()
+    needs: [portability, self-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      # Same shape as the aggregate in pr.yml, and tested the same way — see
+      # tools/tests/workflows.test.mjs.
+      - name: Assert every required job succeeded
+        env:
+          RESULT_PORTABILITY: ${{ needs.portability.result }}
+          RESULT_SELF_CHECK: ${{ needs.self-check.result }}
+        run: |
+          set -euo pipefail
+
+          failed=0
+
+          for entry in \
+            "portability:${RESULT_PORTABILITY:-missing}" \
+            "self-check:${RESULT_SELF_CHECK:-missing}"
+          do
+            job="${entry%%:*}"
+            result="${entry#*:}"
+            printf '%-16s %s\n' "$job" "$result"
+
+            if [ "$result" != "success" ]; then
+              echo "::error::Required job '$job' reported '$result', not 'success'."
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "A skipped or cancelled required job is not a pass."
+            exit 1
+          fi
+
+          echo "All required template jobs succeeded."

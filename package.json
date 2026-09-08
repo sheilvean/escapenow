@@ -1,0 +1,28 @@
+{
+  "name": "dotnet10-openspec-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Repository tooling for the .NET 10 + OpenSpec + Claude Code template. Not shipped as a package.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "repo": "node tools/repo.mjs",
+    "init": "node tools/repo.mjs init --config project.config.json",
+    "doctor": "node tools/repo.mjs doctor",
+    "check": "node tools/repo.mjs check",
+    "check:ci": "node tools/repo.mjs check --ci",
+    "format:fix": "node tools/repo.mjs format --write",
+    "openspec": "node tools/repo.mjs openspec",
+    "test:tools": "node --test \"tools/tests/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "1.12.0",
+    "actionlint": "^2.0.6",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "yaml": "^2.9.0"
+  }
+}

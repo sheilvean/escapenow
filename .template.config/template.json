@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json.schemastore.org/template",
+  "author": "Template maintainers",
+  "classifications": ["Web", "WebAPI", "Solution", "OpenSpec"],
+  "identity": "Dotnet10.OpenSpec.Claude.Template",
+  "name": ".NET 10 service with OpenSpec and Claude Code guardrails",
+  "shortName": "dotnet10-openspec",
+  "description": "A .NET 10 solution with a layered profile, executable architecture rules, a single check entry point, a real OpenSpec installation and a project-scoped Claude Code context.",
+  "sourceName": "AppTemplate",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "true",
+          "exclude": [
+            "node_modules/**",
+            ".git/**",
+            "artifacts/**",
+            "**/bin/**",
+            "**/obj/**",
+            "openspec/changes/**",
+            ".template.config/**"
+          ]
+        }
+      ]
+    }
+  ],
+  "symbols": {
+    "skipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "displayName": "Skip restore",
+      "description": "Skip the automatic dotnet restore after creation."
+    }
+  },
+  "primaryOutputs": [
+    { "path": "AppTemplate.slnx" }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "condition": "(!skipRestore)",
+      "description": "Restore NuGet packages.",
+      "manualInstructions": [{ "text": "Run 'dotnet restore'." }],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "args": { "target": "AppTemplate.slnx" },
+      "continueOnError": true
+    },
+    {
+      "id": "instructions",
+      "description": "Finish setting up the repository.",
+      "manualInstructions": [
+        {
+          "text": "1. npm ci                              (installs the pinned OpenSpec CLI)\n2. node tools/repo.mjs init --config project.config.json\n   (records the repository as initialized and regenerates the derived context;\n    the template engine has already applied the name substitutions)\n3. node tools/repo.mjs doctor          (verify the toolchain and the OpenSpec integration)\n4. node tools/repo.mjs check           (run every check)\n\nopenspec/changes/ is intentionally not copied: a new application starts with no\nchange history. Requirements go in openspec/specs/ as you write them."
+        }
+      ],
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEBCCA1E5C",
+      "continueOnError": true
+    }
+  ],
+  "$comment": [
+    "One set of sources serves both start paths. The substitution token is declared once, in",
+    "tools/rename.manifest.json; sourceName here mirrors it, and",
+    "tools/tests/rename-manifest.test.mjs fails if the two drift apart — including the exclude",
+    "lists, so a file the GitHub-template path protects cannot be rewritten by the dotnet new path.",
+    "",
+    "Only the name is a template parameter. Everything else — the architecture profile, the module",
+    "registry, the documentation language, the optional integrations, the archive gate policy — is",
+    "set in project.config.json and applied with `node tools/repo.mjs sync`. Exposing them here as",
+    "well would mean two places to change one value.",
+    "",
+    "openspec/changes/** is excluded so a generated application does not inherit the template's own",
+    "change history. openspec/specs/ and docs/adr/ are kept: the architecture decisions are the",
+    "part worth inheriting."
+  ]
+}

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Application depends on Domain only. It declares the ports that Infrastructure
+       implements; it never references an implementation. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../EscapeNow.Domain/EscapeNow.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

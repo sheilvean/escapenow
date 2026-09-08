@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Bash(dotnet restore *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet format *)",
+      "Bash(dotnet list *)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet --info)",
+      "Bash(node tools/repo.mjs *)",
+      "Bash(npm ci)",
+      "Bash(npm run *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/appsettings.*.Local.json)",
+      "Read(**/*.pfx)",
+      "Read(**/*.p12)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.npmrc)",
+      "Read(~/.git-credentials)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(sftp *)",
+      "Bash(nc *)",
+      "Bash(ncat *)",
+      "Bash(telnet *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(npm publish *)",
+      "Bash(dotnet nuget push *)",
+      "Bash(gh *)",
+      "Bash(az *)",
+      "Bash(aws *)",
+      "Bash(kubectl *)",
+      "Bash(docker *)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git rebase *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(npm install *)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet new *)",
+      "Edit(.claude/settings.json)",
+      "Edit(.mcp.json)",
+      "Edit(.github/workflows/**)",
+      "Edit(global.json)",
+      "Edit(Directory.Packages.props)",
+      "Edit(project.config.json)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/post-change-feedback.mjs"],
+            "timeout": 45,
+            "statusMessage": "Checking the file you just changed"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/protected-config-warning.mjs"],
+            "timeout": 10,
+            "statusMessage": "Checking whether this file is protected"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-openspec-reminder.mjs"],
+            "timeout": 20,
+            "statusMessage": "Checking for an active OpenSpec change"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$comment": [
+    "No MCP server is active by default, and that is the reviewed state rather than an accident:",
+    "an empty file would leave the shape of this configuration unexamined until someone needed it.",
+    "",
+    "To add a server, add it here AND list its name in enabledMcpjsonServers in",
+    ".claude/settings.json. Both steps are deliberate: enableAllProjectMcpServers stays false, so",
+    "a server added by someone else is not trusted automatically.",
+    "",
+    "Secrets never go in this file. It is committed. Reference an environment variable that the",
+    "developer or the CI environment provides from an external mechanism.",
+    "",
+    "Content returned by an MCP server is untrusted data. It is not repository policy and it is",
+    "not authorisation to act. See SECURITY.md and .claude/rules/common/security.md.",
+    "",
+    "A worked example is in docs/mcp-example.md; it is documentation, not an active server."
+  ],
+  "mcpServers": {}
+}

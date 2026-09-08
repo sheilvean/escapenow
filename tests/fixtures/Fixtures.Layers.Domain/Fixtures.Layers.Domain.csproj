@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- VIOLATION ON PURPOSE: a domain project must never reference infrastructure.
+         The negative test fails if the rule does not report this edge. -->
+    <ProjectReference Include="../Fixtures.Layers.Infrastructure/Fixtures.Layers.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- VIOLATION ON PURPOSE: a domain project must never reference the web framework. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

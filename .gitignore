@@ -1,0 +1,43 @@
+# --- .NET ---
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coverxml
+
+# --- Node ---
+node_modules/
+
+# --- Claude Code: local config and session data (never commit) ---
+.claude/settings.local.json
+.claude/state/
+.claude/hooks/state/
+.claude/todos/
+.claude/shell-snapshots/
+.claude/statsig/
+.claude/projects/
+CLAUDE.local.md
+
+# --- Secrets / local environment ---
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+appsettings.Local.json
+appsettings.*.Local.json
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vs/
+*.swp

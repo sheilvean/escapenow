@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/EscapeNow.Domain/EscapeNow.Domain.csproj" />
+    <ProjectReference Include="../../src/EscapeNow.Application/EscapeNow.Application.csproj" />
+  </ItemGroup>
+
+</Project>

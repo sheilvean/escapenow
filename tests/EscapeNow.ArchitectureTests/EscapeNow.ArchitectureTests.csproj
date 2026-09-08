@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup Label="Production assemblies under test">
+    <ProjectReference Include="../../src/EscapeNow.Domain/EscapeNow.Domain.csproj" />
+    <ProjectReference Include="../../src/EscapeNow.Application/EscapeNow.Application.csproj" />
+    <ProjectReference Include="../../src/EscapeNow.Infrastructure/EscapeNow.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/EscapeNow.Api/EscapeNow.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Negative fixtures">
+    <!-- Referenced so the fixture assemblies are present next to the test assembly. They are
+         loaded explicitly by the negative tests and explicitly excluded from the production
+         rule set, so a deliberate violation here can never mask or trigger a real finding. -->
+    <ProjectReference Include="../fixtures/Fixtures.Layers.Domain/Fixtures.Layers.Domain.csproj" />
+    <ProjectReference Include="../fixtures/Fixtures.Layers.Infrastructure/Fixtures.Layers.Infrastructure.csproj" />
+    <ProjectReference Include="../fixtures/Fixtures.Modules.Alpha/Fixtures.Modules.Alpha.csproj" />
+    <ProjectReference Include="../fixtures/Fixtures.Modules.Beta/Fixtures.Modules.Beta.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TngTech.ArchUnitNET" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+  </ItemGroup>
+
+</Project>

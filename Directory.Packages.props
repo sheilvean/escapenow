@@ -1,0 +1,25 @@
+<Project>
+
+  <!-- Central Package Management: every version lives here, never in a .csproj.
+       Adding a version attribute to a PackageReference in a project file is an error.
+       Source of truth for NuGet versions; see docs/sources-of-truth.md. -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Testing">
+    <!-- xUnit v3 4.0.0 runs natively on Microsoft.Testing.Platform, which global.json
+         selects as the dotnet test runner. Apache-2.0. -->
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup Label="Architecture tests">
+    <!-- Apache-2.0. Pinned exactly: 0.13.x is pre-1.0 and a 2.x draft exists. -->
+    <PackageVersion Include="TngTech.ArchUnitNET" Version="0.13.4" />
+    <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.4" />
+  </ItemGroup>
+
+</Project>

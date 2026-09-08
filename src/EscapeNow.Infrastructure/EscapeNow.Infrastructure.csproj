@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Infrastructure implements the ports declared by Application. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../EscapeNow.Application/EscapeNow.Application.csproj" />
+    <ProjectReference Include="../EscapeNow.Domain/EscapeNow.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
