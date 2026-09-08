@@ -45,16 +45,20 @@ Every layer earns its place in a single request, `GET /api/destinations/recommen
   reasons. It takes a forecast and returns a verdict; it knows nothing about HTTP or Open-Meteo.
   `WeatherCodeMapper` turns an Open-Meteo weather code into the domain's own
   `WeatherConditionKind`, so the vendor's numbering does not leak inward.
-- **Application — `Destinations/DestinationRecommendationService`.** Fans out across the twelve
-  cities in `DestinationCatalog` under a `SemaphoreSlim(3)` throttle, asks the domain rule to score
+- **Application — `Destinations/DestinationRecommendationService`.** Lists cities through the
+  `ICityCatalog` port, fans out under a `SemaphoreSlim(3)` throttle, asks the domain rule to score
   each one, ranks them and returns the best five. It reaches the forecast provider only through the
-  `IWeatherService` port it declares itself.
-- **Infrastructure — `Weather/OpenMeteoWeatherService`.** The only code that knows Open-Meteo
-  exists: a typed `HttpClient` against `api.open-meteo.com`, its JSON shapes, and a four-attempt
-  retry with backoff for 503 and 429.
-- **Api — `Endpoints/DestinationEndpoints`.** Parses the query, calls the application service,
-  returns its answer. It branches on nothing except "was a city found", which is the difference
-  between 200 and 404.
+  `IWeatherService` port it declares itself. `CityCatalogService` owns catalog validation (name,
+  country, image URL, coordinate ranges) and uniqueness of display names.
+- **Infrastructure — adapters.** `Weather/OpenMeteoWeatherService` is the only code that knows
+  Open-Meteo exists: a typed `HttpClient` against `api.open-meteo.com`, its JSON shapes, and a
+  four-attempt retry with backoff for 503 and 429. `Persistence/EfCityCatalog` maps the `cities`
+  table with EF Core and the Npgsql provider; migrations and the empty-table seed live here.
+- **Api — composition and HTTP mapping.** `Endpoints/DestinationEndpoints` parses the query, calls
+  the recommendation service, returns its answer. It branches on nothing except "was a city found",
+  which is the difference between 200 and 404. `Endpoints/CityEndpoints` maps unauthenticated
+  catalog CRUD onto `ICityCatalogService`. The host registers the DbContext, applies migrations at
+  startup, and seeds only when the table is empty.
 
 Health is deliberately outside that shape. `/health/live` and `/health/ready` are mapped directly
 in `Program.cs` on the framework's health-check middleware. Liveness includes no checks — the
@@ -130,7 +134,7 @@ Then: record the decision in `docs/adr/`, and describe the new direction here. `
 ## Deliberately not here
 
 No MediatR, no CQRS, no generic repository, no event bus, no AutoMapper, no result-monad library,
-no Kubernetes manifests, no Aspire, no EF Core, and no product tables — PostgreSQL is reachable
-from the host so later state has somewhere to live, but the twelve cities are still a static list
-and every forecast is fetched per request. Each of those can be right for a specific problem;
-none is right by default. If a change needs one, argue for it in that change's design document.
+no Kubernetes manifests, and no Aspire. PostgreSQL stores the city catalog through EF Core in
+Infrastructure (see `docs/adr/0010-ef-city-catalog.md`); trips and users are still unstored, and
+every forecast is fetched per request. Each of those can be right for a specific problem; none is
+right by default. If a change needs one, argue for it in that change's design document.

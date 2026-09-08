@@ -41,7 +41,7 @@ import { weatherIcon } from '../../utils/weather.utils';
 
         <p class="destination-card__recommendation">{{ destination.recommendation }}</p>
 
-        <a class="destination-card__cta" [routerLink]="['/destination', destination.city]">
+        <a class="destination-card__cta" [routerLink]="['/destination', destination.id]">
           View forecast
         </a>
       </div>

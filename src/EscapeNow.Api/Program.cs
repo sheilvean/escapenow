@@ -3,8 +3,10 @@ using EscapeNow.Api;
 using EscapeNow.Api.Endpoints;
 using EscapeNow.Application.Abstractions;
 using EscapeNow.Application.Destinations;
+using EscapeNow.Infrastructure.Persistence;
 using EscapeNow.Infrastructure.Weather;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("EscapeNow") ?? string.Empty;
 builder.Services.AddHealthChecks()
     .AddCheck("postgres", new PostgresHealthCheck(connectionString));
+
+builder.Services.AddDbContext<CityCatalogDbContext>(options =>
+    options.UseNpgsql(connectionString));
+builder.Services.AddScoped<ICityCatalog, EfCityCatalog>();
+builder.Services.AddScoped<ICityCatalogService, CityCatalogService>();
 
 builder.Services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>(client =>
 {
@@ -42,6 +49,13 @@ builder.Services.AddProblemDetails(options =>
 
 var app = builder.Build();
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<CityCatalogDbContext>();
+    await db.Database.MigrateAsync();
+    await CityCatalogSeeder.SeedIfEmptyAsync(db);
+}
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseCors("Frontend");
@@ -53,6 +67,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = static 
 app.MapHealthChecks("/health/ready");
 
 app.MapDestinationEndpoints();
+app.MapCityEndpoints();
 
 var frontendRoot = Path.GetFullPath(
     Path.Combine(app.Environment.ContentRootPath, "..", "..", "frontend", "dist", "frontend", "browser"));
@@ -67,4 +82,4 @@ if (!app.Environment.IsEnvironment("Testing") && Directory.Exists(frontendRoot))
     app.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = frontendFiles });
 }
 
-app.Run();
+await app.RunAsync();

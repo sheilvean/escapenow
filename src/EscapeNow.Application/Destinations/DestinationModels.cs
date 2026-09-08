@@ -9,6 +9,7 @@ public sealed record WeatherForecastDay(
     string ConditionKey);
 
 public sealed record DestinationRecommendation(
+    Guid Id,
     string City,
     string Country,
     double Latitude,
@@ -22,6 +23,7 @@ public sealed record DestinationRecommendation(
     string ImageUrl);
 
 public sealed record DestinationDetail(
+    Guid Id,
     string City,
     string Country,
     double Latitude,

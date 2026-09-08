@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- PostgreSQL client for the ready probe. Product tables are a later change. -->
+    <!-- PostgreSQL client for the ready probe. The city catalog uses EF Core in Infrastructure. -->
     <PackageReference Include="Npgsql" />
   </ItemGroup>
 

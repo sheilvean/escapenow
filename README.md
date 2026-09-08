@@ -10,7 +10,7 @@ A demo portfolio application for planning **last-minute European city breaks** b
 | --- | --- |
 | Frontend | Angular 21 (LTS), Vite build, Vitest, TypeScript, standalone components, HttpClient |
 | Backend | ASP.NET Core Web API (.NET 10) |
-| Persistence | PostgreSQL 18.6 from `compose.yaml` (reachability only; no product tables yet) |
+| Persistence | PostgreSQL 18.6 from `compose.yaml`; city catalog via EF Core |
 | Weather data | [Open-Meteo](https://open-meteo.com/) (free, no API key) |
 | Local engine | [Rancher Desktop](https://rancherdesktop.io/) with the **dockerd (moby)** container engine |
 
@@ -53,26 +53,33 @@ App: `http://localhost:4200`
 | Route | Description |
 | --- | --- |
 | `/discover` | Search preferences and top 5 destination recommendations |
-| `/destination/:city` | 7-day forecast, score, and “Why go now?” reasons |
+| `/destination/:id` | 7-day forecast, score, and “Why go now?” reasons (city UUID) |
+| `/config` | Unauthenticated catalog editor: list, add, edit, delete cities |
 
 ## API endpoints
 
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/api/destinations/recommendations` | Ranked destinations (query: `startDate`, `endDate`, `temperaturePreference`, `weatherPreference`) |
-| `GET` | `/api/destinations/{city}` | Destination detail with 7-day forecast |
+| `GET` | `/api/destinations/{id}` | Destination detail with 7-day forecast (city UUID) |
+| `GET` | `/api/cities` | List catalog cities |
+| `POST` | `/api/cities` | Create a city |
+| `GET` | `/api/cities/{id}` | Get a city by UUID |
+| `PUT` | `/api/cities/{id}` | Replace a city by UUID |
+| `DELETE` | `/api/cities/{id}` | Delete a city by UUID |
 
 ## Architecture
 
 ```
 Angular UI  →  EscapeNow.Api  →  Open-Meteo
-                  ├── DestinationRecommendationService (scoring & ranking)
+                  ├── CityCatalogService / DestinationRecommendationService
+                  ├── EfCityCatalog (PostgreSQL)
                   └── OpenMeteoWeatherService (forecast fetch)
 ```
 
 Four layers: **Domain** (scoring rules), **Application** (orchestration and ports),
-**Infrastructure** (the HTTP weather client), **Api** (composition and endpoints). The dependency
-direction is enforced by tests — see `docs/ARCHITECTURE.md`.
+**Infrastructure** (the HTTP weather client and EF city catalog), **Api** (composition and
+endpoints). The dependency direction is enforced by tests — see `docs/ARCHITECTURE.md`.
 
 ## City Break Score
 
@@ -84,9 +91,11 @@ Simple 0–100 score (no ML):
 
 ## Included cities
 
-Barcelona, Lisbon, Rome, Madrid, Valencia, Nice, Athens, Budapest, Prague, Vienna, Amsterdam, Copenhagen
+The empty-table seed is Barcelona, Lisbon, Rome, Madrid, Valencia, Nice, Athens, Budapest, Prague,
+Vienna, Amsterdam, Copenhagen. Operators can add, change, or remove cities on `/config`. Destination
+pages are addressed by UUID, not by name.
 
-The `/discover` and `/destination/:city` screens also show non-functional "Check flights",
+The `/discover` and `/destination/:id` screens also show non-functional "Check flights",
 "Generate weekend plan" and "Save this trip" buttons. They are deliberate placeholders with no
 backend behind them.
 

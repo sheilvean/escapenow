@@ -45,7 +45,7 @@ import { DestinationRecommendation, SearchPreferences } from '../../models/desti
           <p>Ranked by weather, temperature and rain probability.</p>
         </div>
         <div class="results__grid">
-          @for (destination of recommendations(); track destination.city; let i = $index) {
+          @for (destination of recommendations(); track destination.id; let i = $index) {
             <app-destination-card
               [destination]="destination"
               [isBestMatch]="i === 0"

@@ -12,7 +12,7 @@ public interface IDestinationRecommendationService
         CancellationToken cancellationToken = default);
 
     Task<DestinationDetail?> GetDestinationAsync(
-        string city,
+        Guid id,
         DateOnly? startDate,
         DateOnly? endDate,
         CancellationToken cancellationToken = default);

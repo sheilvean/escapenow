@@ -93,6 +93,10 @@ Every package above is free to use in every configuration, with no licence key a
 | `TngTech.ArchUnitNET.xUnitV3` | 0.13.4 | Apache-2.0 |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.8 | MIT |
 | `Npgsql` | 10.0.3 | PostgreSQL Licence |
+| `Microsoft.EntityFrameworkCore` | 10.0.11 | MIT |
+| `Microsoft.EntityFrameworkCore.Relational` | 10.0.11 | MIT |
+| `Microsoft.EntityFrameworkCore.Design` | 10.0.11 | MIT |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 | PostgreSQL Licence |
 
 Transitive, via ArchUnitNET: `Mono.Cecil` (MIT), `Newtonsoft.Json` (MIT), `JetBrains.Annotations`
 (MIT), `CycleDetection` (MIT). Microsoft.Testing.Platform arrives through xUnit v3 and the SDK
@@ -102,8 +106,15 @@ The .NET SDK and the ASP.NET Core shared framework are MIT and are not vendored 
 the toolchain `global.json` pins.
 
 `Npgsql` 10.0.3 is the current line that supports `net10.0` (nuget.org, 2026-09-08). It is
-referenced from `EscapeNow.Api` only, for the ready probe. PostgreSQL Licence — permissive, free
+referenced from `EscapeNow.Api` for the ready probe. PostgreSQL Licence — permissive, free
 in every configuration.
+
+`Microsoft.EntityFrameworkCore` 10.0.11 is the current `net10.0` line (nuget.org, 2026-09-08).
+MIT. `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 is the current provider for that line
+(requires EF Core ≥ 10.0.4). PostgreSQL Licence. Both are referenced from
+`EscapeNow.Infrastructure` only; Domain and Application stay free of an ORM. The Design package
+is a private Infrastructure build-time reference so committed migrations can be generated
+against the `CityCatalogDbContext`.
 
 ### Runtime (not consumed as packages)
 

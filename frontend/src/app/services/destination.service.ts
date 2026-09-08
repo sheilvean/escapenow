@@ -30,11 +30,11 @@ export class DestinationService {
     return this.http.get<DestinationRecommendation[]>(`${this.apiBase}/recommendations`, { params });
   }
 
-  getDestination(city: string): Observable<DestinationDetail> {
+  getDestination(id: string): Observable<DestinationDetail> {
     const today = this.formatDate(new Date());
     const end = this.formatDate(this.addDays(new Date(), 6));
     const params = new HttpParams().set('startDate', today).set('endDate', end);
-    return this.http.get<DestinationDetail>(`${this.apiBase}/${encodeURIComponent(city)}`, { params });
+    return this.http.get<DestinationDetail>(`${this.apiBase}/${encodeURIComponent(id)}`, { params });
   }
 
   private resolveDateWindow(period: SearchPreferences['departurePeriod']): { startDate: string; endDate: string } {

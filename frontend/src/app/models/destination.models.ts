@@ -1,4 +1,5 @@
 export interface DestinationRecommendation {
+  id: string;
   city: string;
   country: string;
   latitude: number;
@@ -22,6 +23,7 @@ export interface WeatherForecastDay {
 }
 
 export interface DestinationDetail {
+  id: string;
   city: string;
   country: string;
   latitude: number;
