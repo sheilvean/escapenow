@@ -1,5 +1,4 @@
 import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { SearchPanelComponent } from '../../components/search-panel/search-panel.component';
 import { DestinationCardComponent } from '../../components/destination-card/destination-card.component';
 import { LoadingSkeletonComponent } from '../../components/loading-skeleton/loading-skeleton.component';
@@ -10,7 +9,6 @@ import { DestinationRecommendation, SearchPreferences } from '../../models/desti
   selector: 'app-discover-page',
   standalone: true,
   imports: [
-    CommonModule,
     SearchPanelComponent,
     DestinationCardComponent,
     LoadingSkeletonComponent

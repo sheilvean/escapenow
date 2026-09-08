@@ -94,6 +94,8 @@ describe('a configuration that does not satisfy the schema is rejected', () => {
     ['a missing required section', (c) => { delete c.openspec; }, 'required property'],
     ['a non-boolean flag', (c) => { c.openspec.archiveGate.enabled = 'yes'; }, 'must be boolean'],
     ['a bad language tag', (c) => { c.documentation.language = 'English'; }, 'must match pattern'],
+    ['a backslash frontend path', (c) => { c.paths.frontend = 'apps\\web'; }, 'must match pattern'],
+    ['an absolute frontend path', (c) => { c.paths.frontend = '/srv/frontend'; }, 'must match pattern'],
   ];
 
   for (const [label, mutate, expected] of cases) {
@@ -120,6 +122,17 @@ describe('a configuration that does not satisfy the schema is rejected', () => {
   test('the template configuration itself is valid', () => {
     const { config } = loadConfig(ROOT);
     assert.equal(typeof config.solutionName, 'string');
+  });
+
+  // Optional, not forgotten: a repository with no browser application declares no frontend, and
+  // the frontend stages then report "not configured". Requiring the key would make that repository
+  // invalid; accepting a malformed one would put the layout back inside tools/.
+  test('a configuration that declares no frontend is valid', () => {
+    const repo = makeRepo('no-frontend', (c) => { delete c.paths.frontend; });
+
+    const { config } = loadConfig(repo);
+
+    assert.equal(config.paths.frontend, undefined);
   });
 });
 

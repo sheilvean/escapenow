@@ -5,7 +5,8 @@
   "paths": {
     "solutionFile": "EscapeNow.slnx",
     "src": "src",
-    "tests": "tests"
+    "tests": "tests",
+    "frontend": "frontend"
   },
   "architecture": {
     "profile": "layered"

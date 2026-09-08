@@ -56,6 +56,8 @@ export const STAGE_NAMES = [
   'test:unit',
   'test:arch',
   'test:integration',
+  'frontend:build',
+  'frontend:test',
   'specs',
   'agent-config',
   'workflows',
@@ -77,6 +79,8 @@ export async function runCheck({ root, config, ci }) {
   results.push(stageTest(root, config, 'test:unit', 'UnitTests'));
   results.push(stageTest(root, config, 'test:arch', 'ArchitectureTests'));
   results.push(stageTest(root, config, 'test:integration', 'IntegrationTests'));
+  results.push(stageFrontendBuild(root, config));
+  results.push(stageFrontendTest(root, config));
   results.push(stageSpecs(root));
   results.push(stageAgentConfig(root));
   results.push(await stageWorkflows(root));
@@ -258,6 +262,200 @@ function stageTest(root, config, stageName, projectSuffix) {
           : [tail(result, 30)],
     };
   });
+}
+
+/**
+ * The Angular CLI's JavaScript entry point, relative to the frontend directory.
+ *
+ * Invoked through `process.execPath` rather than through `npm run` or the `ng` shim: proc.mjs
+ * spawns with `shell: false`, and a `.cmd` shim cannot be launched that way on Windows. The
+ * OpenSpec stage already uses this shape, and it keeps the reported command line the real one.
+ */
+const ANGULAR_CLI = 'node_modules/@angular/cli/bin/ng.js';
+
+/** Where the frontend test run writes the machine-readable result this pipeline reads. */
+const FRONTEND_TEST_REPORT = 'artifacts/frontend-tests/results.json';
+
+/**
+ * Resolve what the frontend stages can actually do.
+ *
+ * Four outcomes, and the difference between them is the point: a repository that declares no
+ * frontend has nothing to check, while a declared frontend that is missing or uninstalled is a
+ * missing part of this repository. Only the first is "not configured".
+ */
+function frontendTarget(root, config) {
+  const relative = config.paths.frontend;
+  if (!relative) return { kind: 'undeclared' };
+
+  const dir = path.join(root, relative);
+  if (!fs.existsSync(dir)) return { kind: 'missing-directory', relative, dir };
+  if (!fs.existsSync(path.join(dir, ANGULAR_CLI))) return { kind: 'not-installed', relative, dir };
+
+  return { kind: 'ready', relative, dir };
+}
+
+/** The report for a target that cannot be run, shared by both frontend stages. */
+function frontendUnavailable(target) {
+  if (target.kind === 'undeclared') {
+    return {
+      status: 'not-configured',
+      commands: [],
+      messages: [
+        'project.config.json declares no paths.frontend, so there is no browser application to ' +
+          'check. Reported as not configured, which is not a pass.',
+      ],
+    };
+  }
+
+  if (target.kind === 'missing-directory') {
+    return {
+      status: 'failed',
+      commands: [],
+      messages: [
+        `project.config.json declares paths.frontend as "${target.relative}", but that directory ` +
+          'does not exist. A declared part of the repository that has gone missing is a failure, ' +
+          'not an integration someone chose not to enable.',
+      ],
+    };
+  }
+
+  return {
+    status: 'failed',
+    commands: [],
+    messages: [
+      `${target.relative}/${ANGULAR_CLI} is not present, so the frontend's dependencies are not ` +
+        `installed. Run \`npm ci\` in ${target.relative}/. Skipping the stage would report the ` +
+        'frontend as fine on the strength of never having looked at it.',
+    ],
+  };
+}
+
+/**
+ * The frontend's production build.
+ *
+ * Production, not development: it is the configuration that compiles templates ahead of time and
+ * enforces the budgets in angular.json, so it answers "does this application build?" rather than
+ * "does the TypeScript parse?".
+ */
+function stageFrontendBuild(root, config) {
+  return timed('frontend:build', () => {
+    const target = frontendTarget(root, config);
+    if (target.kind !== 'ready') return frontendUnavailable(target);
+
+    const result = run(process.execPath, [ANGULAR_CLI, 'build', '--configuration', 'production'], {
+      cwd: target.dir,
+    });
+
+    return {
+      status: result.status === 0 ? 'passed' : 'failed',
+      commands: [`${formatArgv(result.argv)}   (in ${target.relative}/)`],
+      messages:
+        result.status === 0
+          ? ['production build succeeded, within the budgets declared in angular.json']
+          : [tail(result, 30)],
+    };
+  });
+}
+
+/**
+ * The frontend's unit tests.
+ *
+ * The exit code alone is not evidence: a runner exits 0 for a run that executed nothing, which is
+ * a state this repository already reached once. So the runner is asked for a JSON report and the
+ * counts are read from it. A stale report from an earlier run would be worse than no report at
+ * all, so the file is removed before the run.
+ */
+function stageFrontendTest(root, config) {
+  return timed('frontend:test', () => {
+    const target = frontendTarget(root, config);
+    if (target.kind !== 'ready') return frontendUnavailable(target);
+
+    const reportPath = path.join(root, FRONTEND_TEST_REPORT);
+    fs.rmSync(reportPath, { force: true });
+
+    const reportArg = path.relative(target.dir, reportPath).split(path.sep).join('/');
+    const result = run(
+      process.execPath,
+      [ANGULAR_CLI, 'test', '--watch=false', '--reporters=json', `--output-file=${reportArg}`],
+      { cwd: target.dir }
+    );
+
+    const command = `${formatArgv(result.argv)}   (in ${target.relative}/)`;
+    const report = readVitestReport(reportPath);
+
+    if (!report.readable) {
+      return {
+        status: 'failed',
+        commands: [command],
+        messages: [
+          `The frontend test run produced no readable result at ${FRONTEND_TEST_REPORT} ` +
+            `(${report.reason}), so the number of executed tests is unknown. An unknown outcome ` +
+            'is reported as a failure, never as a pass.',
+          tail(result, 20),
+        ],
+      };
+    }
+
+    if (report.total === 0) {
+      return {
+        status: 'failed',
+        commands: [command],
+        messages: [
+          'The frontend test run executed 0 tests. An empty run is not evidence.',
+          tail(result, 15),
+        ],
+      };
+    }
+
+    const green = result.status === 0 && report.failed === 0;
+
+    return {
+      status: green ? 'passed' : 'failed',
+      commands: [command],
+      messages: green
+        ? [`${report.total} test(s): ${report.passed} passed, ${report.failed} failed`]
+        : [
+            `${report.total} test(s): ${report.passed} passed, ${report.failed} failed ` +
+              `(runner exit code ${result.status})`,
+            tail(result, 30),
+          ],
+    };
+  });
+}
+
+/**
+ * Read the frontend runner's JSON report.
+ *
+ * Structured output rather than console prose: the .NET stage has to parse a human summary, and it
+ * needs its own tests because that parser broke once on colour codes. Everything here fails
+ * closed, so a missing, unparseable or countless report is `readable: false` and the stage treats
+ * it as a failure. Exported so those cases are tested without running a build.
+ */
+export function readVitestReport(file) {
+  let raw;
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    return { readable: false, reason: 'the file was not written' };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    return { readable: false, reason: `it is not valid JSON: ${error.message}` };
+  }
+
+  const count = (key) => (Number.isInteger(parsed?.[key]) ? parsed[key] : null);
+  const total = count('numTotalTests');
+  const passed = count('numPassedTests');
+  const failed = count('numFailedTests');
+
+  if (total === null || passed === null || failed === null) {
+    return { readable: false, reason: 'it carries no test counts' };
+  }
+
+  return { readable: true, total, passed, failed };
 }
 
 /** OpenSpec artifact validation, through the pinned local CLI. */

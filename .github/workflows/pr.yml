@@ -61,10 +61,21 @@ jobs:
         with:
           node-version-file: package.json
           cache: npm
+          # Two lockfiles, two dependency trees. Naming only the root one would key the cache on
+          # half of what the job installs.
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
       - name: Install pinned Node tooling
         # ci, not install: it installs exactly what the lockfile says and fails if package.json
         # and the lockfile disagree.
+        run: npm ci
+
+      - name: Install the frontend
+        # The check's frontend stages build and test this application; without it they fail,
+        # which is the point — they never report a missing frontend as "not configured".
+        working-directory: frontend
         run: npm ci
 
       - name: Restore
@@ -104,6 +115,9 @@ jobs:
         with:
           node-version-file: package.json
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
       - run: npm ci
       - run: dotnet restore
@@ -121,6 +135,16 @@ jobs:
           fi
 
       - name: Node vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Install the frontend
+        # The frontend has its own lockfile and its own dependency tree. Auditing only the root one
+        # would leave the larger of the two unscanned.
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend Node vulnerabilities
+        working-directory: frontend
         run: npm audit --audit-level=high
 
   secret-scan:

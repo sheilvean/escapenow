@@ -1,12 +1,11 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { WeatherForecastDay } from '../../models/destination.models';
 import { WeatherDayCardComponent } from '../weather-day-card/weather-day-card.component';
 
 @Component({
   selector: 'app-weather-forecast',
   standalone: true,
-  imports: [CommonModule, WeatherDayCardComponent],
+  imports: [WeatherDayCardComponent],
   template: `
     <section class="forecast">
       <h2>7-day weather forecast</h2>

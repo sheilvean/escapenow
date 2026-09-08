@@ -109,7 +109,14 @@ export function renderClaudeRegion(config) {
     '',
     `- Solution: \`${config.paths.solutionFile}\` (root namespace \`${config.rootNamespace}\`)`,
     `- Production projects: \`${config.paths.src}/${config.solutionName}.{Domain,Application,Infrastructure,Api}\``,
-    '- Frontend: `frontend/` (Angular, served separately; not part of the .NET solution check)',
+    // Read from the configuration rather than named here, and omitted entirely when the
+    // repository declares no browser application.
+    ...(config.paths.frontend
+      ? [
+          `- Frontend: \`${config.paths.frontend}/\` (Angular, served separately; built and ` +
+            'tested by the `frontend:build` and `frontend:test` stages of `check`)',
+        ]
+      : []),
     `- Test projects: \`${config.paths.tests}/${config.solutionName}.{UnitTests,ArchitectureTests,IntegrationTests}\``,
     `- Negative architecture fixtures: \`${config.paths.tests}/fixtures/\``,
     `- Architecture profile: \`${config.architecture.profile}\``,

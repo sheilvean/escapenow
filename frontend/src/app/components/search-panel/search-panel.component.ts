@@ -1,5 +1,4 @@
 import { Component, EventEmitter, Output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   DeparturePeriod,
   SearchPreferences,
@@ -10,7 +9,7 @@ import {
 @Component({
   selector: 'app-search-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <section class="search-panel">
       <div class="search-panel__group">

@@ -26,6 +26,7 @@ the code obey it does not.
 | 0005 | One check entry point, shared with CI |
 | 0006 | No CODEOWNERS and no branch protection (accepted risk) |
 | 0007 | Only free dependencies, in every configuration |
+| 0008 | Angular on the LTS line, built with `@angular/build` and tested with Vitest |
 
 ## A note on wording
 
