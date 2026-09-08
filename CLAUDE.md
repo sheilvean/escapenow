@@ -19,7 +19,7 @@ discovery UI and service health — and in `openspec/changes/` while a change is
 
 - Solution: `EscapeNow.slnx` (root namespace `EscapeNow`)
 - Production projects: `src/EscapeNow.{Domain,Application,Infrastructure,Api}`
-- Frontend: `frontend/` (Angular, served separately; not part of the .NET solution check)
+- Frontend: `frontend/` (Angular, served separately; built and tested by the `frontend:build` and `frontend:test` stages of `check`)
 - Test projects: `tests/EscapeNow.{UnitTests,ArchitectureTests,IntegrationTests}`
 - Negative architecture fixtures: `tests/fixtures/`
 - Architecture profile: `layered`
@@ -29,7 +29,8 @@ discovery UI and service health — and in `openspec/changes/` while a change is
 <!-- END GENERATED: project-context -->
 
 Tooling lives in `tools/`; its entry point is `tools/repo.mjs` and its own tests are in
-`tools/tests/`. The Angular app is not part of the .NET solution check and has no CI coverage.
+`tools/tests/`. The Angular app is outside the .NET solution, but it is built and unit-tested
+by the `frontend:build` and `frontend:test` stages of `check`, in CI as well as locally.
 
 ## Where the answers are
 

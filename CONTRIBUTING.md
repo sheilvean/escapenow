@@ -4,6 +4,7 @@
 
 ```bash
 npm ci                  # installs the pinned OpenSpec CLI from the lockfile
+npm ci --prefix frontend # the Angular app has its own lockfile; check builds and tests it
 dotnet restore
 node tools/repo.mjs doctor
 node tools/repo.mjs check

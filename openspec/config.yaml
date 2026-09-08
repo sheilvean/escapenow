@@ -16,8 +16,8 @@ context: |
   ## Stack
 
   - .NET 10 (`net10.0`), ASP.NET Core, C# with nullable reference types enabled.
-  - Frontend: Angular under `frontend/`, served separately from the API; not part of the .NET
-    solution check.
+  - Frontend: Angular 21 under `frontend/`, served separately from the API. Built with
+    `@angular/build` (Vite) and unit-tested with Vitest; both run as stages of `check`.
   - Weather: Open-Meteo, no API key.
   - Tests: xUnit v3 on Microsoft.Testing.Platform. One runner, selected in `global.json`.
   - Architecture rules: ArchUnitNET plus a project-reference graph check.

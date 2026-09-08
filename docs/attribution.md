@@ -49,6 +49,36 @@ upstream Go project (`rhysd/actionlint`) is MIT as well.
 `workflows` check stage can assert the safety properties `SECURITY.md` and `docs/github-setup.md`
 promise, rather than pattern-matching the text.
 
+### Node (frontend, `frontend/package.json`)
+
+Licences read from each installed package's `package.json` on 2026-09-08.
+
+| Package | Version | Licence |
+| --- | --- | --- |
+| `@angular/common` | 21.2.22 | MIT |
+| `@angular/compiler` | 21.2.22 | MIT |
+| `@angular/core` | 21.2.22 | MIT |
+| `@angular/forms` | 21.2.22 | MIT |
+| `@angular/platform-browser` | 21.2.22 | MIT |
+| `@angular/router` | 21.2.22 | MIT |
+| `rxjs` | 7.8.2 | Apache-2.0 |
+| `tslib` | 2.8.1 | 0BSD |
+| `zone.js` | 0.16.3 | MIT |
+| `@angular/build` | 21.2.23 | MIT |
+| `@angular/cli` | 21.2.23 | MIT |
+| `@angular/compiler-cli` | 21.2.22 | MIT |
+| `jsdom` | 30.0.1 | MIT |
+| `typescript` | 5.9.3 | Apache-2.0 |
+| `vitest` | 4.1.11 | MIT |
+
+Angular 21 is the current **LTS** line; `@angular/core`'s `v21-lts` dist-tag resolves to 21.2.22
+while `latest` is 22.1.5, which is the active line. `vitest` is pinned in the 4.x line because
+`@angular/build@21` declares `vitest: ^4.0.8` as its optional peer — Vitest 5 is outside that
+range. `jsdom` is what the unit-test builder runs the tests in when no browser is configured, which
+is why a test run needs no browser installed. See `docs/adr/0008-angular-build-and-vitest.md`.
+
+Every package above is free to use in every configuration, with no licence key and no paid tier.
+
 ### NuGet
 
 | Package | Version | Licence |

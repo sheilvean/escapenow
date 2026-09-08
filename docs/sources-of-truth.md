@@ -13,6 +13,8 @@ that can be enforced mechanically.
 | NuGet package versions | `Directory.Packages.props` | central package management is on, so a `Version=` on a `PackageReference` is a build error |
 | Per-project resolved dependency graph | `**/packages.lock.json` | CI restores in locked mode, so an unexpected resolution fails |
 | Node tooling versions, including the OpenSpec CLI | `package.json` + `package-lock.json` | the `specs` stage fails when the installed CLI differs from the lockfile |
+| The Node version contributors and CI run | `package.json`, `engines.node` | `doctor` reads it, and `setup-node` reads the same file in CI |
+| Frontend dependency versions | `frontend/package.json` + `frontend/package-lock.json` | the `frontend:build` and `frontend:test` stages fail when the frontend is not installed from its lockfile |
 | NuGet feeds | `NuGet.config` | `<clear/>` means no machine-level feed leaks in |
 | Code style and naming | `.editorconfig` | the `format` stage verifies it; `EnforceCodeStyleInBuild` fails the build |
 | Project identity, layout, architecture profile, policy | `project.config.json` | validated against `project.config.schema.json`, `additionalProperties: false` throughout |

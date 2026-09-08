@@ -1,5 +1,4 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DestinationService } from '../../services/destination.service';
 import { DestinationDetail } from '../../models/destination.models';
@@ -11,7 +10,6 @@ import { LoadingSkeletonComponent } from '../../components/loading-skeleton/load
   selector: 'app-destination-details-page',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     ScoreBadgeComponent,
     WeatherForecastComponent,

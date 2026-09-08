@@ -8,7 +8,7 @@ A demo portfolio application for planning **last-minute European city breaks** b
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | Angular 19, TypeScript, standalone components, HttpClient |
+| Frontend | Angular 21 (LTS), Vite build, Vitest, TypeScript, standalone components, HttpClient |
 | Backend | ASP.NET Core Web API (.NET 10) |
 | Weather data | [Open-Meteo](https://open-meteo.com/) (free, no API key) |
 
@@ -26,7 +26,7 @@ API: `http://localhost:5180`
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm start
 ```
 

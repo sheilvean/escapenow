@@ -1,11 +1,10 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { scoreLabel } from '../../utils/weather.utils';
 
 @Component({
   selector: 'app-score-badge',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="score-badge" [class.score-badge--highlight]="highlight">
       <span class="score-badge__value">{{ score }}</span>

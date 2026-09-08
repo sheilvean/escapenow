@@ -43,6 +43,10 @@
         "tests": {
           "$ref": "#/$defs/relativePath",
           "description": "Directory holding test projects."
+        },
+        "frontend": {
+          "$ref": "#/$defs/relativePath",
+          "description": "Directory holding the browser application, if this repository has one. Optional: when it is absent the frontend check stages report 'not configured'. When it is declared, a directory that is missing or whose dependencies are not installed is a failed stage, never a skipped one."
         }
       }
     },

@@ -4,8 +4,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
+    /* Vitest's describe/it/expect are globals here, the way Jasmine's used to be. Declaring the
+       types is what replaces the old "jasmine" entry; without it the specs do not type-check. */
     "types": [
-      "jasmine"
+      "vitest/globals"
     ]
   },
   "include": [

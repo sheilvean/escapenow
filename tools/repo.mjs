@@ -109,6 +109,23 @@ function commandSync(flags) {
 // doctor
 // --------------------------------------------------------------------------------------------
 
+/**
+ * The lowest Node major `package.json` accepts, or null when it says nothing.
+ *
+ * Only the floor is read: `doctor` reports whether the running Node is old enough, and a full
+ * semver-range evaluation would be a dependency for a question that has one number in it.
+ */
+function requiredNodeMajor(root) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const range = manifest?.engines?.node;
+    const floor = typeof range === 'string' ? /(\d+)/.exec(range) : null;
+    return floor ? Number(floor[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 function commandDoctor() {
   const root = findRepoRoot(process.cwd());
   const { config } = loadConfig(root);
@@ -130,10 +147,16 @@ function commandDoctor() {
   out('Toolchain');
   const dotnet = run(DOTNET, ['--version'], { cwd: root });
   report(dotnet.status === 0, 'dotnet SDK', dotnet.status === 0 ? dotnet.stdout.trim() : 'not found');
+  // The required Node version is owned by package.json's `engines`, which is also what
+  // setup-node reads in CI. Restating it here would be a second source of truth, and it had
+  // already drifted once.
+  const required = requiredNodeMajor(root);
   report(
-    process.versions.node.split('.').map(Number)[0] >= 20,
+    required === null || Number(process.versions.node.split('.')[0]) >= required,
     'Node.js',
-    `v${process.versions.node} (OpenSpec requires >= 20.19.0)`
+    required === null
+      ? `v${process.versions.node} (package.json declares no engines.node)`
+      : `v${process.versions.node} (package.json requires >= ${required})`
   );
   out();
 
