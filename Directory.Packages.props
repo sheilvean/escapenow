@@ -26,6 +26,13 @@
     <!-- PostgreSQL ADO.NET client. Pin read from nuget.org 2026-09-08; 10.0.3 is the current
          net10.0-supporting line. PostgreSQL Licence. -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <!-- EF Core 10.0.11 is the current net10.0 line (nuget.org, 2026-09-08). MIT.
+         Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 is the current provider for that line
+         and requires EF Core >= 10.0.4. PostgreSQL Licence. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
 </Project>

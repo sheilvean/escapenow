@@ -15,6 +15,9 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         <a routerLink="/discover" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           Discover
         </a>
+        <a routerLink="/config" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Config
+        </a>
       </nav>
     </header>
   `,

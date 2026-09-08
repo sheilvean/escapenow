@@ -239,14 +239,14 @@ export class DestinationDetailsPageComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const city = this.route.snapshot.paramMap.get('city');
-    if (!city) {
-      this.error.set('City was not provided.');
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) {
+      this.error.set('Destination was not provided.');
       this.loading.set(false);
       return;
     }
 
-    this.destinationService.getDestination(city).subscribe({
+    this.destinationService.getDestination(id).subscribe({
       next: detail => {
         this.destination.set(detail);
         this.loading.set(false);

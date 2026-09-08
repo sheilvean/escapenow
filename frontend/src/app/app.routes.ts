@@ -8,11 +8,16 @@ export const routes: Routes = [
       import('./pages/discover-page/discover-page.component').then(m => m.DiscoverPageComponent)
   },
   {
-    path: 'destination/:city',
+    path: 'destination/:id',
     loadComponent: () =>
       import('./pages/destination-details-page/destination-details-page.component').then(
         m => m.DestinationDetailsPageComponent
       )
+  },
+  {
+    path: 'config',
+    loadComponent: () =>
+      import('./pages/config-page/config-page.component').then(m => m.ConfigPageComponent)
   },
   { path: '**', redirectTo: 'discover' }
 ];

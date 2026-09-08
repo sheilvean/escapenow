@@ -30,15 +30,15 @@ public static class DestinationEndpoints
             return Results.Ok(recommendations);
         });
 
-        group.MapGet("/{city}", async (
-            string city,
+        group.MapGet("/{id:guid}", async (
+            Guid id,
             DateOnly? startDate,
             DateOnly? endDate,
             IDestinationRecommendationService recommendationService,
             CancellationToken cancellationToken) =>
         {
             var detail = await recommendationService.GetDestinationAsync(
-                city,
+                id,
                 startDate,
                 endDate,
                 cancellationToken);

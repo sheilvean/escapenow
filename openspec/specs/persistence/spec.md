@@ -19,14 +19,15 @@ SHALL fail closed: it SHALL NOT be treated as a successful connection.
 - **WHEN** PostgreSQL is not reachable at the configured connection string
 - **THEN** the attempt fails, and the failure is reported rather than ignored
 
-### Requirement: Persistence does not store product data yet
+### Requirement: Cities are stored; trips and users are not
 
-The system SHALL NOT persist destinations, trips, searches, or user accounts. The city catalog
-SHALL remain a static in-process list. Activating the existing save control SHALL NOT write a row.
+The system SHALL persist the city catalog in the configured PostgreSQL instance. It SHALL NOT
+persist trips, searches, or user accounts. Activating the existing save control SHALL NOT write a
+trip row.
 
-#### Scenario: The catalog is not loaded from the database
+#### Scenario: Recommendations read stored cities
 - **WHEN** recommendations are requested
-- **THEN** the twelve catalog cities are resolved without reading destination rows from PostgreSQL
+- **THEN** the scored set is the cities currently in the store, not a compile-time list
 
 #### Scenario: Save still does not persist
 - **WHEN** a visitor activates save on the destination page

@@ -3,7 +3,9 @@ using EscapeNow.Domain.Destinations;
 
 namespace EscapeNow.Application.Destinations;
 
-public sealed class DestinationRecommendationService(IWeatherService weatherService) : IDestinationRecommendationService
+public sealed class DestinationRecommendationService(
+    IWeatherService weatherService,
+    ICityCatalog cityCatalog) : IDestinationRecommendationService
 {
     public async Task<IReadOnlyList<DestinationRecommendation>> GetRecommendationsAsync(
         DateOnly? startDate,
@@ -12,10 +14,16 @@ public sealed class DestinationRecommendationService(IWeatherService weatherServ
         WeatherPreference weatherPreference,
         CancellationToken cancellationToken = default)
     {
+        var cities = await cityCatalog.ListAsync(cancellationToken);
+        if (cities.Count == 0)
+        {
+            return [];
+        }
+
         var (windowStart, windowEnd) = ResolveWindow(startDate, endDate);
         using var throttle = new SemaphoreSlim(3);
 
-        var tasks = DestinationCatalog.Cities.Select(async city =>
+        var tasks = cities.Select(async city =>
         {
             await throttle.WaitAsync(cancellationToken);
             try
@@ -49,12 +57,12 @@ public sealed class DestinationRecommendationService(IWeatherService weatherServ
     }
 
     public async Task<DestinationDetail?> GetDestinationAsync(
-        string city,
+        Guid id,
         DateOnly? startDate,
         DateOnly? endDate,
         CancellationToken cancellationToken = default)
     {
-        var destination = DestinationCatalog.FindByName(city);
+        var destination = await cityCatalog.GetByIdAsync(id, cancellationToken);
         if (destination is null)
         {
             return null;
@@ -80,6 +88,7 @@ public sealed class DestinationRecommendationService(IWeatherService weatherServ
         var recommendation = CityBreakScorer.BuildRecommendation(avgTemp, dominant, avgRain, score);
 
         return new DestinationDetail(
+            destination.Id,
             destination.Name,
             destination.Country,
             destination.Latitude,
@@ -105,6 +114,7 @@ public sealed class DestinationRecommendationService(IWeatherService weatherServ
         var label = WeatherCodeMapper.ToLabel(dominant);
 
         return new DestinationRecommendation(
+            city.Id,
             city.Name,
             city.Country,
             city.Latitude,
