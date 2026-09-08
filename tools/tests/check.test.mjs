@@ -95,6 +95,8 @@ describe('readVitestReport', () => {
       total: 3,
       passed: 3,
       failed: 0,
+      skipped: 0,
+      executed: 3,
     });
   });
 
@@ -109,6 +111,8 @@ describe('readVitestReport', () => {
       total: 3,
       passed: 2,
       failed: 1,
+      skipped: 0,
+      executed: 3,
     });
   });
 
@@ -124,7 +128,52 @@ describe('readVitestReport', () => {
       total: 0,
       passed: 0,
       failed: 0,
+      skipped: 0,
+      executed: 0,
     });
+  });
+
+  // Captured from a real run with all three specs marked `it.skip`: the runner counts them in
+  // its total, reports success and exits 0. Counting collected tests instead of executed ones
+  // would let a suite that ran nothing report green, which is the failure this stage exists for.
+  test('a suite where every test is skipped executed nothing', () => {
+    const file = write(
+      'all-skipped.json',
+      JSON.stringify({
+        numTotalTests: 3,
+        numPassedTests: 0,
+        numFailedTests: 0,
+        numPendingTests: 3,
+        success: true,
+      })
+    );
+
+    assert.deepEqual(readVitestReport(file), {
+      readable: true,
+      total: 3,
+      passed: 0,
+      failed: 0,
+      skipped: 3,
+      executed: 0,
+    });
+  });
+
+  test('counts todo tests as skipped as well', () => {
+    const file = write(
+      'todo.json',
+      JSON.stringify({
+        numTotalTests: 5,
+        numPassedTests: 3,
+        numFailedTests: 0,
+        numPendingTests: 1,
+        numTodoTests: 1,
+      })
+    );
+
+    const result = readVitestReport(file);
+
+    assert.equal(result.skipped, 2);
+    assert.equal(result.executed, 3);
   });
 
   test('a report that was never written is unreadable, not empty', () => {
