@@ -14,7 +14,6 @@ import addFormats from 'ajv-formats';
 
 export const CONFIG_FILE = 'project.config.json';
 export const SCHEMA_FILE = 'project.config.schema.json';
-export const MANIFEST_FILE = path.join('tools', 'rename.manifest.json');
 
 export class ConfigError extends Error {
   constructor(message, details = []) {
@@ -67,7 +66,7 @@ function buildValidator(schema) {
 /**
  * Load and validate the configuration.
  *
- * @returns {{root: string, configPath: string, config: object, manifest: object}}
+ * @returns {{root: string, configPath: string, config: object}}
  */
 export function loadConfig(startDir = process.cwd()) {
   const root = findRepoRoot(startDir);
@@ -91,9 +90,7 @@ export function loadConfig(startDir = process.cwd()) {
     throw new ConfigError(`${CONFIG_FILE} does not satisfy ${SCHEMA_FILE}`, details);
   }
 
-  const manifest = readJson(path.join(root, MANIFEST_FILE));
-
-  return { root, configPath, config, manifest };
+  return { root, configPath, config };
 }
 
 /**
@@ -134,21 +131,4 @@ export function findForeignKeys(config) {
   return found;
 }
 
-/**
- * Resolve the token values a rename would apply, from the manifest and the configuration.
- * `contents` tokens rewrite file contents; `both` also rewrites file and directory names.
- */
-export function resolveTokens(config, manifest) {
-  return manifest.tokens.map((t) => {
-    const value = t.configPath
-      .split('.')
-      .reduce((acc, seg) => (acc === undefined ? undefined : acc[seg]), config);
-    if (typeof value !== 'string' || value.length === 0) {
-      throw new ConfigError(
-        `Manifest token "${t.name}" points at ${CONFIG_FILE} path "${t.configPath}", ` +
-          'which is missing or not a non-empty string.'
-      );
-    }
-    return { ...t, value };
-  });
-}
+

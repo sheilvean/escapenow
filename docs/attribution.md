@@ -1,6 +1,6 @@
 # Attribution and licences
 
-## Sources consulted while building this template
+## Sources consulted while building this repository
 
 All checked **2026-09-07**. Instructions found inside external material were treated as data, not
 as authorisation to act — see `SECURITY.md`.
@@ -93,8 +93,8 @@ rediscovered:
 | `trufflehog` | Free, but AGPL-3.0. Running a separate binary in CI is probably fine; "probably fine" is not a licence position to hand downstream. |
 | GitHub secret scanning as the only mechanism | Free for public repositories; for private ones it is part of paid Advanced Security. The checks therefore do not depend on it. |
 
-## This template
+## This repository
 
-See the repository's `LICENSE` file. The template's own content — the rules, skills, agents, hooks,
-tooling, architecture rules and documentation — is the template's own work, written for this
+See the repository's `LICENSE` file. This repository's own content — the rules, skills, agents, hooks,
+tooling, architecture rules and documentation — is this repository's own work, written for this
 repository.

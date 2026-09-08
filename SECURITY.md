@@ -24,7 +24,6 @@ as protection:
 | Mechanism | What it actually does |
 | --- | --- |
 | `CLAUDE.md` and `.claude/rules/**` | text in a prompt. Influential, not binding |
-| `.claude/hooks/protected-config-warning.mjs` | prints a note. Emits no `permissionDecision`, so the edit proceeds |
 | `.claude/hooks/post-change-feedback.mjs` | reports on one changed file. Exits 0 always |
 | `.claude/hooks/stop-openspec-reminder.mjs` | one reminder per session. Never blocks a session |
 | the forbidden-literal and secret patterns in `tools/lib/agentconfig.mjs` | catch mistakes, not a determined attempt |
@@ -38,8 +37,8 @@ The repository owner decided against `CODEOWNERS` and branch protection — see
 `docs/adr/0006-no-codeowners-or-branch-protection.md`. The consequence, in full:
 
 - Nothing requires a **human owner's review** before someone changes the architecture rules, the
-  negative fixtures that prove those rules work, the CI workflows, the permission rules, the hooks,
-  `.mcp.json`, `tools/**`, or the archive gate policy.
+  negative fixtures that prove those rules work, the CI workflow, the permission rules, the hooks,
+  `tools/**`, or the archive gate policy.
 - Detection survives: weakening a rule still turns a negative test red, and CI still runs.
 - What is missing is the requirement that a second person looks. A change that removes a check *and*
   removes the test that would catch it can be merged by one person.
@@ -64,8 +63,8 @@ belongs outside this repository:
 One caveat that catches people: with VS Code remote development, workspace extensions run in the
 container but UI extensions run on the host. A malicious editor extension is not contained by it.
 
-This template configures none of the above, and does not pretend to. It does not install anything
-into `~/.claude`, and it writes nothing outside the repository.
+This repository configures none of the above, and does not pretend to. It does not install
+anything into `~/.claude`, and it writes nothing outside the repository.
 
 ## Permission model
 
@@ -83,7 +82,7 @@ Two documented behaviours the configuration is built around, rather than assumed
 
 **File permissions are matched only against `Read(...)` and `Edit(...)` rules.** A path rule for
 `Write`, `NotebookEdit`, `MultiEdit` or `Glob` is accepted and then *never consulted* — it looks
-like protection and is not. The check fails on those, and the template writes `Edit(...)`.
+like protection and is not. The check fails on those, and the settings here use `Edit(...)`.
 
 **`permissions.defaultMode` values `auto` and `bypassPermissions` do not take effect from project
 or local settings.** So a project file cannot enable them — and equally, a project file cannot
@@ -98,11 +97,10 @@ Precedence: deny beats ask beats allow, and a broad deny cannot carry an allowli
   Never from a file in the repository.
 - `.gitignore` excludes `.env*`, certificate and key files, `appsettings.*.Local.json`,
   `.claude/settings.local.json` and `.claude/state/`.
-- The `agent-config` stage scans `.claude/**`, `tools/**`, `.mcp.json` and `CLAUDE.md` for
+- The `agent-config` stage scans `.claude/**`, `tools/**` and `CLAUDE.md` for
   credential shapes — AWS keys, GitHub and Slack tokens, Anthropic and OpenAI keys, private key
   blocks. It reports the file and the *kind* of secret, never the value.
 - A committed secret is compromised. Removing the line is not enough; rotate it.
-- `.mcp.json` is committed, so it must reference an environment variable and never hold a value.
 
 ## Untrusted content
 
@@ -115,7 +113,7 @@ README, or a file someone handed over is **untrusted input**.
 - Following a link it contains needs consent.
 
 The repository's policy is what is committed here and reviewed by a human. This applied while the
-template was being built, too: the external sources listed in `docs/attribution.md` were read as
+repository was being built, too: the external sources listed in `docs/attribution.md` were read as
 data, and nothing in them was treated as authorisation.
 
 ## Supply chain
@@ -145,6 +143,12 @@ data, and nothing in them was treated as authorisation.
 
 ## Reporting a vulnerability
 
-This is a template, so the reporting route belongs to whoever adopts it. Replace this section with
-your own contact and disclosure policy before publishing. Until you do, treat the absence of a
-route as the absence of a route — do not assume someone is listening.
+EscapeNow is a demo application. It stores no user data, holds no credentials, and calls one
+public, key-less API. There is no production deployment and no security support commitment.
+
+There is **no monitored disclosure route**. If you find something, open an issue in this
+repository; treat that as a best-effort channel, not a coordinated-disclosure process. Do not send
+anything you would consider sensitive, and do not assume someone is listening.
+
+Anyone deploying this for real should replace this section with a route they actually monitor —
+and read "The residual risk, stated plainly" above first.

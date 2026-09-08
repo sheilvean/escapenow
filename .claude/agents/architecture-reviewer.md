@@ -22,8 +22,8 @@ able to do that is part of the problem.
   uses it yet. Is it permitted, and is it needed?
 - **Framework leakage.** Has a web, ORM, hosting, DI or configuration dependency reached Domain or
   Application? Check the reference lists, not just the `using` directives.
-- **Module boundaries.** Does a cross-module dependency go through the target module's declared
-  contract? Is a new module registered in `architecture.modules`?
+- **Layer boundaries.** Does a type in an inner layer reach for something an outer layer owns,
+  rather than declaring a port for it?
 - **Rule integrity.** This is the important one. Flag as **blocking**:
   - a forbidden-namespace list that lost an entry;
   - an added `WithoutRequiringPositiveResults()`;

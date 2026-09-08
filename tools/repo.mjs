@@ -2,7 +2,6 @@
 /**
  * The repository's single entry point.
  *
- *   node tools/repo.mjs init --config <file> [--dry-run]
  *   node tools/repo.mjs doctor
  *   node tools/repo.mjs check [--ci] [--json]
  *   node tools/repo.mjs sync [--dry-run]
@@ -23,7 +22,6 @@ import path from 'node:path';
 import process from 'node:process';
 import { ConfigError, findRepoRoot, loadConfig } from './lib/config.mjs';
 import { DOTNET, formatArgv, run } from './lib/proc.mjs';
-import { InitError, applyInit, looksPreRenamed, planInit } from './lib/init.mjs';
 import { applyRegions, plannedRegions, findDrift, RegionError } from './lib/generated.mjs';
 import { evaluateArchiveGate } from './lib/gate.mjs';
 import { runCheck, STAGE_NAMES } from './lib/check.mjs';
@@ -40,8 +38,6 @@ import {
 const USAGE = `Usage: node tools/repo.mjs <command> [options]
 
 Commands:
-  init --config <file> [--dry-run]   First-time initialization. Refuses on an initialized
-                                     repository; --dry-run writes nothing and installs nothing.
   doctor                             Report on the repository's state. Never modifies anything.
   check [--ci] [--json]              Run every check: ${STAGE_NAMES.join(', ')}.
   sync [--dry-run]                   Regenerate the derived context regions. Never touches code.
@@ -84,116 +80,15 @@ function fail(message, details = []) {
 }
 
 // --------------------------------------------------------------------------------------------
-// init
-// --------------------------------------------------------------------------------------------
-
-function commandInit(flags) {
-  const dryRun = flags.get('dry-run') === true;
-  const configFlag = flags.get('config');
-
-  if (typeof configFlag !== 'string') {
-    fail('init requires --config <file>, naming the configuration to initialize from.');
-    return;
-  }
-
-  // The flag names the configuration file, so the root is the directory that holds it.
-  const configPath = path.resolve(process.cwd(), configFlag);
-  if (!fs.existsSync(configPath)) {
-    fail(`--config points at ${configPath}, which does not exist.`);
-    return;
-  }
-
-  const root = path.dirname(configPath);
-  const { config, manifest } = loadConfig(root);
-
-  const plan = planInit(root, config, manifest);
-
-  if (plan.alreadyInitialized) {
-    err('error: this repository is already initialized.');
-    err('  Nothing was changed.');
-    err(`  Tokens applied at initialization: ${JSON.stringify(config.template.appliedTokens)}`);
-    err('  Renaming an existing application is a manual operation, not a command: it touches');
-    err('  namespaces, project files and history. To regenerate only the derived context after a');
-    err('  configuration change, run: node tools/repo.mjs sync');
-    process.exitCode = 1;
-    return;
-  }
-
-  out(`${dryRun ? 'Planned' : 'Applying'} initialization in ${root}`);
-  out(`  placeholder token: ${plan.placeholder}`);
-  for (const token of plan.tokens) {
-    out(`  ${token.name} = ${token.value}   (from ${token.configPath})`);
-  }
-  out();
-
-  if (plan.conflicts.length > 0) {
-    err('Conflicts — nothing was changed:');
-    for (const conflict of plan.conflicts) err(`  ${conflict}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  if (looksPreRenamed(plan)) {
-    out('No placeholder occurrences found. This repository was generated through `dotnet new`,');
-    out('where the template engine already applied the substitutions.');
-    out('Recording it as initialized and regenerating the derived context.');
-    out();
-  }
-
-  out(`Content edits (${plan.contentEdits.length} file(s)):`);
-  for (const edit of plan.contentEdits) {
-    out(`  ${edit.file}  ${edit.occurrences} occurrence(s) -> ${edit.value}`);
-  }
-  out();
-  out(`Renames (${plan.renames.length}):`);
-  for (const rename of plan.renames) out(`  ${rename.from} -> ${rename.to}`);
-  out();
-  out(`Generated regions (${plan.regions.length}):`);
-  for (const region of plan.regions) out(`  ${region.file}  (source: ${region.source})`);
-  out();
-
-  if (dryRun) {
-    out('--dry-run: nothing was written and no dependency was installed.');
-    out('Re-run without --dry-run to apply.');
-    return;
-  }
-
-  try {
-    const applied = applyInit(root, config, manifest, plan, { dryRun: false });
-    out(
-      `Applied: ${applied.contentEdits} file edit(s), ${applied.renames} rename(s), ` +
-        `${applied.regions.filter((r) => r.changed).length} region(s) updated.`
-    );
-    for (const directory of applied.createdDirectories ?? []) {
-      out(`  created missing directory: ${directory}`);
-    }
-    for (const region of applied.regions.filter((r) => r.missing)) {
-      err(`  warning: ${region.file} does not exist, so its region was not written.`);
-    }
-    out();
-    out('Next:');
-    out('  npm ci');
-    out('  dotnet restore');
-    out('  node tools/repo.mjs check');
-  } catch (error) {
-    if (error instanceof InitError) {
-      fail(error.message, error.details);
-      return;
-    }
-    throw error;
-  }
-}
-
-// --------------------------------------------------------------------------------------------
 // sync
 // --------------------------------------------------------------------------------------------
 
 function commandSync(flags) {
   const dryRun = flags.get('dry-run') === true;
   const root = findRepoRoot(process.cwd());
-  const { config, manifest } = loadConfig(root);
+  const { config } = loadConfig(root);
 
-  const planned = plannedRegions(root, config, manifest);
+  const planned = plannedRegions(root, config);
   const results = applyRegions(root, planned, dryRun);
 
   out(`${dryRun ? 'Planned' : 'Applied'} generated regions:`);
@@ -216,7 +111,7 @@ function commandSync(flags) {
 
 function commandDoctor() {
   const root = findRepoRoot(process.cwd());
-  const { config, manifest } = loadConfig(root);
+  const { config } = loadConfig(root);
 
   let problems = 0;
   const report = (ok, label, detail) => {
@@ -230,18 +125,6 @@ function commandDoctor() {
   out('Configuration');
   report(true, 'project.config.json satisfies its schema');
 
-  // Being uninitialized is the *template's* correct state, not a fault: the template repository
-  // is meant to sit there waiting to be used. Reporting it as a failure made `doctor` red in the
-  // one repository that is supposed to look like this, which trains people to ignore the output.
-  if (config.template.initialized) {
-    report(true, 'initialized', `tokens: ${JSON.stringify(config.template.appliedTokens)}`);
-  } else {
-    out(
-      '  info this repository is not initialized, which is the expected state for the template ' +
-        'itself.'
-    );
-    out('       To turn it into an application: node tools/repo.mjs init --config project.config.json');
-  }
   out();
 
   out('Toolchain');
@@ -278,13 +161,13 @@ function commandDoctor() {
       : 'the `verify` workflow is not in the machine-wide OpenSpec profile. ' +
         'To opt in: `node tools/repo.mjs openspec config profile` (add `verify`), then ' +
         '`node tools/repo.mjs openspec update`. This changes a setting for every OpenSpec ' +
-        'project on this machine, so the template will not do it for you.'
+        'project on this machine, so this repository will not do it for you.'
   );
   out();
 
   out('Generated regions');
   try {
-    const drift = findDrift(root, plannedRegions(root, config, manifest));
+    const drift = findDrift(root, plannedRegions(root, config));
     if (drift.length === 0) {
       report(true, 'all regions match their source');
     } else {
@@ -326,9 +209,9 @@ async function commandCheck(flags) {
   const asJson = flags.get('json') === true;
 
   const root = findRepoRoot(process.cwd());
-  const { config, manifest } = loadConfig(root);
+  const { config } = loadConfig(root);
 
-  const { results, ok } = await runCheck({ root, config, manifest, ci });
+  const { results, ok } = await runCheck({ root, config, ci });
 
   if (asJson) {
     out(JSON.stringify({ ok, ci, stages: results }, null, 2));
@@ -459,9 +342,6 @@ async function main() {
   const { flags } = parseArgs(rest);
 
   switch (command) {
-    case 'init':
-      commandInit(flags);
-      break;
     case 'doctor':
       commandDoctor();
       break;
@@ -486,7 +366,7 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  if (error instanceof ConfigError || error instanceof RegionError || error instanceof InitError) {
+  if (error instanceof ConfigError || error instanceof RegionError) {
     fail(error.message, error.details ?? []);
   } else {
     throw error;

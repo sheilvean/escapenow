@@ -1,8 +1,8 @@
 {
-  "name": "dotnet10-openspec-template",
+  "name": "escapenow-repo-tooling",
   "version": "0.1.0",
   "private": true,
-  "description": "Repository tooling for the .NET 10 + OpenSpec + Claude Code template. Not shipped as a package.",
+  "description": "Repository tooling for EscapeNow. Not shipped as a package.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -10,7 +10,6 @@
   },
   "scripts": {
     "repo": "node tools/repo.mjs",
-    "init": "node tools/repo.mjs init --config project.config.json",
     "doctor": "node tools/repo.mjs doctor",
     "check": "node tools/repo.mjs check",
     "check:ci": "node tools/repo.mjs check --ci",

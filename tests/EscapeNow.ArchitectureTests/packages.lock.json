@@ -208,15 +208,6 @@
       },
       "fixtures.layers.infrastructure": {
         "type": "Project"
-      },
-      "fixtures.modules.alpha": {
-        "type": "Project"
-      },
-      "fixtures.modules.beta": {
-        "type": "Project",
-        "dependencies": {
-          "Fixtures.Modules.Alpha": "[1.0.0, )"
-        }
       }
     }
   }

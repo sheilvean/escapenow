@@ -9,8 +9,16 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ConfigError, findForeignKeys, findRepoRoot, loadConfig, resolveTokens } from '../lib/config.mjs';
-import { readRegion, replaceRegion, RegionError, findDrift, plannedRegions, applyRegions } from '../lib/generated.mjs';
+import { ConfigError, findForeignKeys, findRepoRoot, loadConfig } from '../lib/config.mjs';
+import {
+  readRegion,
+  replaceRegion,
+  RegionError,
+  findDrift,
+  plannedRegions,
+  applyRegions,
+  GENERATED_REGIONS,
+} from '../lib/generated.mjs';
 import { run } from '../lib/proc.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
@@ -36,11 +44,6 @@ function makeRepo(name, mutate = () => {}) {
     path.join(ROOT, 'project.config.schema.json'),
     path.join(repo, 'project.config.schema.json')
   );
-  fs.copyFileSync(
-    path.join(ROOT, 'tools', 'rename.manifest.json'),
-    path.join(repo, 'tools', 'rename.manifest.json')
-  );
-
   return repo;
 }
 
@@ -89,8 +92,7 @@ describe('a configuration that does not satisfy the schema is rejected', () => {
     ['an absolute source path', (c) => { c.paths.src = '/etc'; }, 'must match pattern'],
     ['a parent-traversal path', (c) => { c.paths.src = '../outside'; }, 'must match pattern'],
     ['a missing required section', (c) => { delete c.openspec; }, 'required property'],
-    ['a non-boolean flag', (c) => { c.integrations.mcp.enabled = 'yes'; }, 'must be boolean'],
-    ['a module without a contract', (c) => { c.architecture.modules = [{ name: 'A' }]; }, 'required property'],
+    ['a non-boolean flag', (c) => { c.openspec.archiveGate.enabled = 'yes'; }, 'must be boolean'],
     ['a bad language tag', (c) => { c.documentation.language = 'English'; }, 'must match pattern'],
   ];
 
@@ -144,26 +146,6 @@ describe('values owned by another file are detected', () => {
   });
 });
 
-describe('tokens resolve from the configuration', () => {
-  test('every manifest token maps to a non-empty value', () => {
-    const { config, manifest } = loadConfig(ROOT);
-    const tokens = resolveTokens(config, manifest);
-
-    assert.ok(tokens.length > 0);
-    for (const token of tokens) {
-      assert.equal(typeof token.value, 'string');
-      assert.ok(token.value.length > 0);
-    }
-  });
-
-  test('a token pointing at a missing configuration path is an error', () => {
-    const { config } = loadConfig(ROOT);
-    const brokenManifest = { tokens: [{ name: 'x', configPath: 'nope.missing' }] };
-
-    assert.throws(() => resolveTokens(config, brokenManifest), ConfigError);
-  });
-});
-
 describe('generated regions', () => {
   const begin = '<!-- BEGIN GENERATED: t -->';
   const end = '<!-- END GENERATED: t -->';
@@ -200,9 +182,40 @@ describe('generated regions', () => {
     assert.equal(once, twice);
   });
 
+  test('every declared region names a file that carries both its markers', () => {
+    // Previously asserted against tools/rename.manifest.json. The declarations now live in
+    // GENERATED_REGIONS, and the guard moves with them: a region whose file or marker is missing
+    // would otherwise make `sync` a no-op and let the facts go stale unnoticed.
+    assert.ok(GENERATED_REGIONS.length > 0);
+
+    for (const region of GENERATED_REGIONS) {
+      const file = path.join(ROOT, region.file);
+      assert.ok(fs.existsSync(file), `generated region declared for missing file ${region.file}`);
+
+      const text = fs.readFileSync(file, 'utf8');
+      assert.ok(text.includes(region.begin), `${region.file} lacks its begin marker`);
+      assert.ok(text.includes(region.end), `${region.file} lacks its end marker`);
+
+      const source = path.join(ROOT, region.source);
+      assert.ok(fs.existsSync(source), `region for ${region.file} names missing source ${region.source}`);
+    }
+  });
+
+  test('every declared region has a renderer', () => {
+    // plannedRegions throws RegionError for a region it cannot render, so a declaration added
+    // without a renderer fails here rather than at the next sync.
+    const { config } = loadConfig(ROOT);
+    const planned = plannedRegions(ROOT, config);
+
+    assert.equal(planned.length, GENERATED_REGIONS.length);
+    for (const region of planned) {
+      assert.ok(typeof region.body === 'string' && region.body.length > 0);
+    }
+  });
+
   test('the real repository has no drift', () => {
-    const { config, manifest } = loadConfig(ROOT);
-    const drift = findDrift(ROOT, plannedRegions(ROOT, config, manifest));
+    const { config } = loadConfig(ROOT);
+    const drift = findDrift(ROOT, plannedRegions(ROOT, config));
 
     assert.deepEqual(
       drift,
@@ -214,8 +227,8 @@ describe('generated regions', () => {
   test('drift is detected after an out-of-band edit, and the check does not repair it', () => {
     const claudeMd = path.join(ROOT, 'CLAUDE.md');
     const original = fs.readFileSync(claudeMd, 'utf8');
-    const { config, manifest } = loadConfig(ROOT);
-    const planned = plannedRegions(ROOT, config, manifest);
+    const { config } = loadConfig(ROOT);
+    const planned = plannedRegions(ROOT, config);
     const region = planned.find((r) => r.file === 'CLAUDE.md');
 
     try {
@@ -247,7 +260,7 @@ describe('the entry point behaves as a command-line tool', () => {
     const result = run(process.execPath, [repoMjs, '--help'], { cwd: ROOT });
 
     assert.equal(result.status, 0);
-    for (const command of ['init', 'doctor', 'check', 'sync', 'format', 'archive-gate', 'openspec']) {
+    for (const command of ['doctor', 'check', 'sync', 'format', 'archive-gate', 'openspec']) {
       assert.match(result.stdout, new RegExp(`\\b${command}\\b`));
     }
   });
@@ -259,11 +272,15 @@ describe('the entry point behaves as a command-line tool', () => {
     assert.match(result.stderr, /unknown command/);
   });
 
-  test('init without --config exits non-zero and says what is missing', () => {
-    const result = run(process.execPath, [repoMjs, 'init'], { cwd: ROOT });
+  test('the retired init command is rejected like any other unknown command', () => {
+    // The repository is no longer a template. `init` must not linger as a command that half
+    // works or reports a confusing error; it is simply not a command any more.
+    const result = run(process.execPath, [repoMjs, 'init', '--config', 'project.config.json'], {
+      cwd: ROOT,
+    });
 
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /--config/);
+    assert.match(result.stderr, /unknown command: init/);
   });
 
   test('it works when invoked from a subdirectory', () => {

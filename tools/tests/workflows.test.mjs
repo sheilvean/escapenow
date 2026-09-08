@@ -200,10 +200,11 @@ describe('the shipped workflows are valid and honour the documented policy', () 
   test('every workflow file the repository ships is validated', () => {
     const files = workflowFiles(ROOT).map((f) => f.name);
 
-    assert.ok(files.length >= 2, `expected at least two workflows, found ${files.join(', ')}`);
-    for (const name of Object.keys(REQUIRED_CHECKS)) {
-      assert.ok(files.includes(name), `${name} is missing`);
-    }
+    // The two sets must match exactly in both directions. A shipped workflow missing from
+    // REQUIRED_CHECKS is unpoliced; a REQUIRED_CHECKS entry with no workflow names a required
+    // check that can never report, which blocks a merge queue forever.
+    assert.ok(files.length >= 1, 'expected at least one workflow');
+    assert.deepEqual(files.slice().sort(), Object.keys(REQUIRED_CHECKS).sort());
   });
 });
 

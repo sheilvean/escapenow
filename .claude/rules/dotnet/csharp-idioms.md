@@ -47,7 +47,7 @@ them rather than discovering them:
 
 ## Not imposed
 
-The template does not require MediatR, CQRS, a generic repository, an event bus, AutoMapper, or a
+This repository does not require MediatR, CQRS, a generic repository, an event bus, AutoMapper, or a
 result-monad library. Each of them can be right for a specific problem; none of them is right by
-default, and adding one to a starter template makes it a decision nobody made. If a change needs
+default, and adding one unprompted makes it a decision nobody made. If a change needs
 one, argue for it in the design document.

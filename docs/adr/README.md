@@ -26,3 +26,15 @@ the code obey it does not.
 | 0005 | One check entry point, shared with CI |
 | 0006 | No CODEOWNERS and no branch protection (accepted risk) |
 | 0007 | Only free dependencies, in every configuration |
+
+## A note on wording
+
+ADRs 0001–0007 were written while this repository was also distributed as a reusable
+`dotnet new` template, and several of them argue in those terms — what a template should impose,
+what it should leave to a downstream project. That capability was retired by the
+`retire-template-capability` change; the decisions themselves still stand, for the reasons
+recorded.
+
+Their wording is deliberately left as written. An accepted ADR is superseded, never rewritten:
+editing the rationale to match today's repository would make the record agree with the present at
+the cost of no longer being a record.

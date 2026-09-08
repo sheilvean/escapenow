@@ -57,7 +57,7 @@ Summary:  passed,  failed,  not configured, of 10 stage(s).
 <!-- Delete the lines that do not apply. Anything left here should be argued for above. -->
 
 - [ ] Changes an architecture rule, a project reference, or the module registry — **ADR required**
-- [ ] Changes `.claude/settings.json`, hooks, or `.mcp.json` — permission boundaries
+- [ ] Changes `.claude/settings.json` or hooks — permission boundaries
 - [ ] Changes `.github/workflows/**` — what "green" means
 - [ ] Changes `tools/**` — the tooling every check runs through
 - [ ] Adds, removes or upgrades a dependency — pinned exactly? free in every configuration?

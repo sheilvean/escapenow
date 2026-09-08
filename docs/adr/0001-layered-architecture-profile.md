@@ -5,7 +5,7 @@ Date: 2026-09-07
 
 ## Context
 
-A template has to start a project somewhere architecturally. Two failure modes are available:
+A project has to start somewhere architecturally. Two failure modes are available:
 impose a structure so elaborate that every project fights it, or ship nothing and let each project
 reinvent the layering — badly, and differently.
 
@@ -29,7 +29,7 @@ invariants of any architecture.
 
 - A project that wants a different architecture sets one configuration value and writes an ADR. It
   does not have to delete rules that fight it.
-- `custom` deliberately does not enforce a replacement. The template cannot know what to enforce,
+- `custom` deliberately does not enforce a replacement. The rules cannot know what to enforce,
   and a rule that guesses is worse than no rule.
 - Application taking options as a plain object rather than `IOptions<T>` is a real constraint that
   falls out of this decision. It is enforced, and it is explained in `docs/ARCHITECTURE.md`.

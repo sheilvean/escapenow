@@ -1,22 +1,18 @@
 # GitHub setup
 
-**The template performs no writes against GitHub.** It has no `gh` dependency, no API token, and no
+**This repository performs no writes against GitHub.** It has no `gh` dependency, no API token, and no
 script that changes repository settings. Everything on this page is a manual administrative step
 that belongs to whoever owns the repository.
 
-That separation is deliberate: a local template that silently configured a remote account would be
+That separation is deliberate: local tooling that silently configured a remote account would be
 doing the one thing nobody asked it to do, and it could not be reviewed before it happened.
 
-## What the template does ship
+## What this repository does ship
 
-`.github/workflows/pr.yml` and `.github/workflows/template.yml`, with:
-
-- least-privilege `permissions` at the workflow level;
-- every action pinned to a commit SHA, not a tag;
-- no `pull_request_target`, so code from a fork never runs in a privileged context;
-- no job referencing a repository secret for a pull request from a fork;
-- an aggregate status job that asserts each required job's result **explicitly**, so a skipped
-  required job cannot produce a green aggregate.
+`.github/workflows/pr.yml`, and nothing else. Its safety properties — least-privilege
+permissions, SHA-pinned actions, no `pull_request_target`, no secrets for fork pull requests, and
+an aggregate that cannot go green on a skipped job — are listed once, under "CI safety" in
+`SECURITY.md`, and verified by the `workflows` check stage.
 
 ## What is deliberately absent
 
@@ -30,13 +26,13 @@ the negative fixtures that prove those rules work, the CI workflows, the permiss
 hooks, `tools/**`, or the archive gate policy. CI still runs and still detects those changes — what
 is missing is the requirement that a second person looks.
 
-The template also does **not** ship a `CODEOWNERS` with placeholder teams. A file naming teams that
+There is also **no** `CODEOWNERS` with placeholder teams. A file naming teams that
 do not exist looks like working protection, which is worse than none: it answers "is this
 protected?" with a yes.
 
 ## If you want the protection
 
-Nothing in the template needs to change. Three steps, all in GitHub:
+Nothing in the repository needs to change. Three steps, all in GitHub:
 
 ### 1. Create `.github/CODEOWNERS`
 
@@ -55,7 +51,6 @@ Real people or real teams only. Suggested paths, in the order that matters:
 /.claude/settings.json                          @your-team
 /.claude/hooks/                                 @your-team
 /.claude/agents/                                @your-team
-/.mcp.json                                      @your-team
 
 # Policy and toolchain
 /project.config.json                            @your-team
@@ -97,24 +92,12 @@ updating the ruleset, so treat them as an interface:
 Marking **`required`** as the single required check is enough, and is the safer choice: it fails
 when any of the others is skipped or cancelled, which a per-job requirement does not always catch.
 
-`.github/workflows/template.yml` adds three more, which only run when the generator itself
-changes:
-
-| Check name | What it covers |
-| --- | --- |
-| `portability` | generating two applications and running the guardrail scenarios, on Linux and Windows |
-| `self-check` | `doctor` plus the ten-stage check on the template repository itself |
-| `template-required` | the aggregate for the two above |
-
-Require `template-required` as well if you intend to keep publishing this repository as a
-template. If you deleted `.template.config/` and no longer do, that workflow can go with it.
-
 These names are verified: `node tools/repo.mjs check` fails if a workflow stops defining a job this
 page names, and reports it if this page stops mentioning one the workflows define.
 
 ## Verifying the state, without changing it
 
-The template will not read or write your GitHub configuration, so verification is manual. Read-only
+Nothing here reads or writes your GitHub configuration, so verification is manual. Read-only
 commands, if you have `gh` installed and authenticated:
 
 ```bash
@@ -127,7 +110,7 @@ The last one is worth running after step 1: it reports owners GitHub cannot reso
 `CODEOWNERS` file ends up looking effective while protecting nothing.
 
 Note that `gh` is **not** a dependency of this repository — it was not installed on the machine
-where the template was built, and no check requires it.
+where this repository was built, and no check requires it.
 
 ## Merge queue
 

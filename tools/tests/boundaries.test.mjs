@@ -54,20 +54,25 @@ function diff(before_, after_) {
 }
 
 /**
- * A copy of the template that `init` can be run against.
+ * A copy of the repository that a command can be run against.
  *
- * node_modules is reused by reference rather than copied: `init` never touches it, and copying
+ * node_modules is reused by reference rather than copied: no command touches it, and copying
  * 19 MB per case would make this test the slowest thing in the suite for no added confidence.
  */
-function copyTemplate(name) {
+function copyRepository(name) {
   const repo = path.join(SCRATCH, name);
   fs.rmSync(repo, { recursive: true, force: true });
   fs.mkdirSync(repo, { recursive: true });
 
-  const skip = new Set(['node_modules', 'artifacts', '.git']);
+  // Skipped at any depth, not just the top level: frontend/ carries its own node_modules, and
+  // copying that per case costs over half a million files for no added confidence.
+  const skip = new Set(['node_modules', 'artifacts', '.git', 'dist', 'obj', 'bin']);
   for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
     if (skip.has(entry.name)) continue;
-    fs.cpSync(path.join(ROOT, entry.name), path.join(repo, entry.name), { recursive: true });
+    fs.cpSync(path.join(ROOT, entry.name), path.join(repo, entry.name), {
+      recursive: true,
+      filter: (source) => !skip.has(path.basename(source)),
+    });
   }
 
   fs.mkdirSync(path.join(repo, 'node_modules', '@fission-ai', 'openspec', 'bin'), {
@@ -85,12 +90,12 @@ function copyTemplate(name) {
 
 describe('nothing is written outside the repository', () => {
   /**
-   * `init` and `sync` run with the home directory redirected at an empty tree, which is then
+   * `sync` and `check` run with the home directory redirected at an empty tree, which is then
    * compared byte-for-byte. The specification says the agent configuration is project-scoped and
    * that nothing is installed into the user's home directory; this is what makes that checkable.
    */
   function withRedirectedHome(name, argv) {
-    const repo = copyTemplate(name);
+    const repo = copyRepository(name);
     const fakeHome = path.join(SCRATCH, `${name}-home`);
 
     fs.rmSync(fakeHome, { recursive: true, force: true });
@@ -116,27 +121,6 @@ describe('nothing is written outside the repository', () => {
     return { repo, fakeHome, before: before_, result };
   }
 
-  test('init writes only inside the repository', () => {
-    const { fakeHome, before: before_, result } = withRedirectedHome('init-scope', [
-      'init',
-      '--config',
-      'project.config.json',
-    ]);
-
-    // The exit code is deliberately not asserted. In the template it is 0; in an application
-    // generated from the template, `init` correctly *refuses* and exits non-zero — and this test
-    // runs in both, because a generated application runs the same tooling tests. Asserting 0 made
-    // it fail in every generated repository for doing the right thing. Either way the claim under
-    // test is the same one: nothing outside the repository was written.
-    const changes = diff(before_, snapshot(fakeHome));
-    assert.deepEqual(
-      changes,
-      [],
-      `init touched the home directory (init exited ${result.status}):\n` +
-        changes.map((c) => `  ${c}`).join('\n')
-    );
-  });
-
   test('sync writes only inside the repository', () => {
     const { fakeHome, before: before_, result } = withRedirectedHome('sync-scope', ['sync']);
 
@@ -146,8 +130,39 @@ describe('nothing is written outside the repository', () => {
     assert.deepEqual(changes, [], 'sync touched the home directory:\n' + changes.join('\n'));
   });
 
+  test('sync leaves authored specifications byte-identical', () => {
+    // sync owns the generated regions and nothing else. openspec/specs/, openspec/changes/ and
+    // docs/adr/ are authored by people, so a real (non-dry) sync must not touch a byte of them.
+    const repo = copyRepository('sync-authored');
+    const authored = ['openspec/specs', 'openspec/changes', 'docs/adr'];
+
+    const before_ = new Map();
+    for (const dir of authored) {
+      for (const [file, state] of snapshot(path.join(repo, dir))) before_.set(file, state);
+    }
+    assert.ok(before_.size > 0, 'the fixture copied no authored files, so this proves nothing');
+
+    const result = run(process.execPath, [path.join(repo, 'tools', 'repo.mjs'), 'sync'], {
+      cwd: repo,
+      timeoutMs: 120_000,
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+
+    const after_ = new Map();
+    for (const dir of authored) {
+      for (const [file, state] of snapshot(path.join(repo, dir))) after_.set(file, state);
+    }
+
+    const changes = diff(before_, after_);
+    assert.deepEqual(
+      changes,
+      [],
+      'sync modified authored files:\n' + changes.map((c) => `  ${c}`).join('\n')
+    );
+  });
+
   test('doctor writes nothing at all', () => {
-    const repo = copyTemplate('doctor-scope');
+    const repo = copyRepository('doctor-scope');
     const before_ = snapshot(repo);
 
     const result = run(process.execPath, [path.join(repo, 'tools', 'repo.mjs'), 'doctor'], {
@@ -173,8 +188,8 @@ describe('nothing is written outside the repository', () => {
     // Not because anything should write there, but because a tool that quietly used the temp
     // directory for state would make a "nothing outside the repository" claim false in a way the
     // home-directory check would miss.
-    const repo = copyTemplate('temp-scope');
-    const marker = path.join(os.tmpdir(), `template-boundary-${process.pid}`);
+    const repo = copyRepository('temp-scope');
+    const marker = path.join(os.tmpdir(), `escapenow-boundary-${process.pid}`);
     fs.mkdirSync(marker, { recursive: true });
 
     try {
@@ -263,7 +278,7 @@ describe('no check needs a credential', () => {
     // while its own scratch directory was called "no-credentials", so `doctor`'s "Repository: ..."
     // line matched and the test failed on its own filename. A broad pattern over a whole output
     // matches the environment, not the behaviour.
-    const repo = copyTemplate('stripped-env');
+    const repo = copyRepository('stripped-env');
 
     const result = run(process.execPath, [path.join(repo, 'tools', 'repo.mjs'), 'doctor'], {
       cwd: repo,

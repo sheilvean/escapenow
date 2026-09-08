@@ -15,7 +15,7 @@ or ruleset configuration.
 
 ## Decision
 
-The template ships neither.
+This repository ships neither.
 
 - No `.github/CODEOWNERS`, and no generator for one.
 - No `owners` or `github` section in `project.config.json`.
@@ -34,7 +34,7 @@ oversight. Specifically, nothing requires an owner's review before someone chang
 - the architecture test project's `Support/LayeredProfile.cs` — the architecture rules;
 - `tests/fixtures/**` — the fixtures that prove those rules detect violations;
 - `.github/workflows/**` — what "green" means;
-- `.claude/settings.json`, `.claude/hooks/**`, `.mcp.json` — the agent's own boundaries;
+- `.claude/settings.json`, `.claude/hooks/**` — the agent's own boundaries;
 - `tools/**` — the tooling every check runs through, including the archive gate;
 - `project.config.json` — the archive gate policy and the active profile.
 
@@ -46,8 +46,6 @@ What still applies, and is worth being precise about:
 - **Weakening a rule is still detected.** The negative fixtures exist precisely so that a relaxed
   rule turns a test red. What is missing is the requirement that a *human owner* looks at it — not
   the detection.
-- **The advisory hook still fires.** `protected-config-warning.mjs` names the file and says why it
-  matters. It does not block, and it never claimed to.
 - **`permissions.ask` still prompts.** `.claude/settings.json` puts the protected paths behind an
   ask rule, so an agent editing one surfaces a prompt to whoever is at the keyboard. That is a
   session-level control, not a repository-level one: it protects against an agent acting
@@ -59,7 +57,7 @@ person without a second pair of eyes.
 
 ## Revisiting this
 
-Adding the protection later needs no code change in the template — only repository settings and one
+Adding the protection later needs no code change here — only repository settings and one
 file:
 
 1. Create `.github/CODEOWNERS` naming real people or real teams.

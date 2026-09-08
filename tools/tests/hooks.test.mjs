@@ -64,7 +64,6 @@ const MALFORMED_PAYLOADS = [
 const ALL_HOOKS = [
   'post-change-feedback.mjs',
   'stop-openspec-reminder.mjs',
-  'protected-config-warning.mjs',
 ];
 
 describe('every hook survives every malformed payload', () => {
@@ -230,57 +229,5 @@ describe('stop-openspec-reminder', () => {
       assert.doesNotMatch(code, new RegExp(writing.replace(/[$]/g, '')));
     }
     assert.match(code, /'list'/, 'the only CLI call it needs is a read');
-  });
-});
-
-describe('protected-config-warning', () => {
-  test('notes a protected file and says why', () => {
-    const result = runHook(
-      'protected-config-warning.mjs',
-      JSON.stringify({ tool_input: { file_path: '.claude/settings.json' } })
-    );
-
-    assert.equal(result.status, 0);
-    assert.ok(result.json?.systemMessage);
-    assert.match(result.json.systemMessage, /permission rules/);
-    assert.match(result.json.systemMessage, /advisory/i);
-  });
-
-  test('does not block the edit', () => {
-    const result = runHook(
-      'protected-config-warning.mjs',
-      JSON.stringify({ tool_input: { file_path: '.github/workflows/pr.yml' } })
-    );
-
-    assert.equal(result.status, 0, 'exit 2 from a PreToolUse hook would deny the tool call');
-    assert.equal(
-      result.json?.hookSpecificOutput,
-      undefined,
-      'emitting a permissionDecision would make this a gate, which it is deliberately not'
-    );
-  });
-
-  test('says nothing about an ordinary file', () => {
-    const result = runHook(
-      'protected-config-warning.mjs',
-      JSON.stringify({ tool_input: { file_path: 'README.md' } })
-    );
-
-    assert.equal(result.status, 0);
-    assert.equal(result.json, null);
-  });
-
-  test('covers the architecture rule definitions', () => {
-    const result = runHook(
-      'protected-config-warning.mjs',
-      JSON.stringify({
-        tool_input: {
-          file_path: 'tests/AppTemplate.ArchitectureTests/Support/LayeredProfile.cs',
-        },
-      })
-    );
-
-    assert.equal(result.status, 0);
-    assert.match(result.json.systemMessage, /ADR/);
   });
 });

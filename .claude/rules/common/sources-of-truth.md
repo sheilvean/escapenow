@@ -7,13 +7,17 @@ description: Which file owns which value, so a fact is changed in one place rath
 One value, one owner. When a fact appears in two files, they drift, and the one that is wrong is
 usually the one someone read.
 
+**`docs/sources-of-truth.md` is the full map** — every concern, its owning file, and how the check
+enforces it. Read it when a task touches configuration, versions or generated files. What is worth
+carrying into every session:
+
 | Concern | Owner | Not here |
 | --- | --- | --- |
 | .NET SDK version and the test runner | `global.json` | not in `project.config.json`, not in CI YAML |
 | Target framework and the warning policy | `Directory.Build.props` | not per project |
 | NuGet package versions | `Directory.Packages.props` | never a `Version=` on a `PackageReference` |
 | Node tooling versions, including the OpenSpec CLI | `package.json` + `package-lock.json` | not installed globally, never `latest` |
-| Project identity, layout, profile, module registry, policy | `project.config.json` | not repeated in rules, skills or scripts |
+| Project identity, layout, profile, policy | `project.config.json` | not repeated in rules, skills or scripts |
 | What the system must do | `openspec/specs/` | not in a code comment, not in a README |
 | Work in flight | `openspec/changes/` | not in a branch name or a pull request description |
 | Why a durable architectural decision was made | `docs/adr/` | not in a commit message |
@@ -23,8 +27,8 @@ usually the one someone read.
 ## Reading configuration
 
 Reusable instructions — this file, the other rules, the skills, and everything in `tools/` — read
-`project.config.json` or point at it. They do not restate a project's name, paths or module list.
-The check enforces this: a hardcoded application identity in a reusable instruction is a failure.
+`project.config.json` or point at it. They do not restate a project's name or paths. The check
+enforces this: a hardcoded application identity in a reusable instruction is a failure.
 
 Test fixtures under `tests/fixtures/` and the tooling tests under `tools/tests/` are exempt, and
 that exemption is documented in `docs/sources-of-truth.md`. Fixtures need concrete names to be

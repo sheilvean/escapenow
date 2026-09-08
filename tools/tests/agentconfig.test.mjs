@@ -25,17 +25,22 @@ after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
 /**
  * A copy of the repository's agent configuration, with one mutation applied.
  *
- * Only what the validator reads is copied: `.claude/`, `.mcp.json`, `CLAUDE.md` and the paths
+ * Only what the validator reads is copied: `.claude/`, `CLAUDE.md` and the paths
  * CLAUDE.md points at. The last part matters — the reference-path rule would otherwise fire on
  * every case and drown out the one under test.
  */
+/** Directories that are never worth copying into a fixture: regenerable, and enormous. */
+const UNCOPYABLE = new Set(['node_modules', 'artifacts', 'dist', '.git', 'obj', 'bin']);
+
+/** cpSync filter: skip a dependency or build directory anywhere in the tree. */
+const copyable = (source) => !UNCOPYABLE.has(path.basename(source));
+
 function mutated(name, mutate) {
   const repo = path.join(SCRATCH, name);
   fs.rmSync(repo, { recursive: true, force: true });
   fs.mkdirSync(repo, { recursive: true });
 
   fs.cpSync(path.join(ROOT, '.claude'), path.join(repo, '.claude'), { recursive: true });
-  fs.copyFileSync(path.join(ROOT, '.mcp.json'), path.join(repo, '.mcp.json'));
   fs.copyFileSync(path.join(ROOT, 'CLAUDE.md'), path.join(repo, 'CLAUDE.md'));
 
   // Every path CLAUDE.md references, so the reference check has something to resolve.
@@ -49,7 +54,11 @@ function mutated(name, mutate) {
     if (!fs.existsSync(source) || fs.existsSync(destination)) continue;
 
     fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.cpSync(source, destination, { recursive: true });
+    // The reference check only needs the path to exist, so dependency and build directories are
+    // skipped. Without this, a referenced directory that happens to contain node_modules is
+    // copied in full for every case — `frontend/` alone is over half a million files, which
+    // turns this suite from seconds into hours.
+    fs.cpSync(source, destination, { recursive: true, filter: copyable });
   }
 
   mutate(repo);
@@ -160,6 +169,26 @@ describe('each rule fires on a configuration that breaks it', () => {
       /does not cover shell HTTP clients/,
     ],
 
+    // checkProtectedConfigIsBehindAsk
+    [
+      'a protected configuration file dropped from the ask list',
+      (repo) => {
+        const s = readSettings(repo);
+        s.permissions.ask = s.permissions.ask.filter((r) => r !== 'Edit(project.config.json)');
+        writeSettings(repo, s);
+      },
+      /permissions\.ask does not cover "project\.config\.json"/,
+    ],
+    [
+      'no ask list at all',
+      (repo) => {
+        const s = readSettings(repo);
+        delete s.permissions.ask;
+        writeSettings(repo, s);
+      },
+      /declares no permissions\.ask list/,
+    ],
+
     // checkPermissionRuleShapes
     [
       'a path rule written for Write, which Claude Code never consults',
@@ -207,18 +236,6 @@ describe('each rule fires on a configuration that breaks it', () => {
         writeSettings(repo, s);
       },
       /declares a hook of type "prompt"/,
-    ],
-
-    // checkMcp
-    [
-      'an .mcp.json that is not valid JSON',
-      (repo) => fs.writeFileSync(path.join(repo, '.mcp.json'), '{ "mcpServers": ', 'utf8'),
-      /is not valid JSON/,
-    ],
-    [
-      'a missing .mcp.json',
-      (repo) => fs.rmSync(path.join(repo, '.mcp.json')),
-      /is missing/,
     ],
 
     // checkRulePathScoping
@@ -336,14 +353,6 @@ describe('each rule fires on a configuration that breaks it', () => {
       },
       null,
     ],
-    [
-      'an example domain module presented as a real one',
-      (repo) => {
-        const file = path.join(repo, '.claude', 'rules', 'common', 'workflow.md');
-        fs.appendFileSync(file, '\nStart with Orders.Domain and Billing.Application.\n', 'utf8');
-      },
-      /example domain module/,
-    ],
 
     // checkSecrets
     [
@@ -357,10 +366,8 @@ describe('each rule fires on a configuration that breaks it', () => {
     [
       'a committed private key block',
       (repo) => {
-        const file = path.join(repo, '.mcp.json');
-        const mcp = JSON.parse(fs.readFileSync(file, 'utf8'));
-        mcp.$note = '-----BEGIN RSA PRIVATE KEY-----';
-        fs.writeFileSync(file, JSON.stringify(mcp, null, 2), 'utf8');
+        const file = path.join(repo, '.claude', 'rules', 'common', 'security.md');
+        fs.appendFileSync(file, '\n-----BEGIN RSA PRIVATE KEY-----\n', 'utf8');
       },
       /private key block/,
     ],

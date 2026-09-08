@@ -1,9 +1,12 @@
 # Architecture
 
-The template ships **one** architecture profile, `layered`, and one documented way to replace it.
-It does not implement several alternatives speculatively: an unused architecture is a liability
-that still has to be maintained, and the choice between them belongs to a real project with real
-constraints.
+EscapeNow answers one question — *where in Europe should I go for a city break in the next seven
+days?* — and the code is arranged so that the answer is decided in one place and merely transported
+by the rest.
+
+The repository uses one architecture profile, `layered`. It is not a menu: an unused architecture
+is a liability that still has to be maintained, and the choice between them belongs to a project
+with real constraints.
 
 ## The layered profile
 
@@ -32,38 +35,32 @@ The direction and both forbidden lists are declared once, in
 `tests/EscapeNow.ArchitectureTests/Support/LayeredProfile.cs`. Every rule reads them from there,
 so the assembly-level checks and the project-reference checks cannot disagree about the policy.
 
-## Why the Application layer has no `IOptions<T>`
+## The one vertical slice
 
-`ReadinessService` takes a `ReadinessOptions` object, not an `IOptions<ReadinessOptions>`. The
-composition root unwraps it:
+Every layer earns its place in a single request, `GET /api/destinations/recommendations`:
 
-```csharp
-builder.Services.AddSingleton(static sp => sp.GetRequiredService<IOptions<ReadinessOptions>>().Value);
-```
+- **Domain — `Destinations/CityBreakScorer`.** The scoring rule: a 0–100 city-break score from a
+  week of daily forecasts, with bonuses for ideal temperature, sun and low rain, and penalties for
+  storms, heavy rain and extremes. It also builds the recommendation text and the "why go now"
+  reasons. It takes a forecast and returns a verdict; it knows nothing about HTTP or Open-Meteo.
+  `WeatherCodeMapper` turns an Open-Meteo weather code into the domain's own
+  `WeatherConditionKind`, so the vendor's numbering does not leak inward.
+- **Application — `Destinations/DestinationRecommendationService`.** Fans out across the twelve
+  cities in `DestinationCatalog` under a `SemaphoreSlim(3)` throttle, asks the domain rule to score
+  each one, ranks them and returns the best five. It reaches the forecast provider only through the
+  `IWeatherService` port it declares itself.
+- **Infrastructure — `Weather/OpenMeteoWeatherService`.** The only code that knows Open-Meteo
+  exists: a typed `HttpClient` against `api.open-meteo.com`, its JSON shapes, and a four-attempt
+  retry with backoff for 503 and 429.
+- **Api — `Endpoints/DestinationEndpoints`.** Parses the query, calls the application service,
+  returns its answer. It branches on nothing except "was a city found", which is the difference
+  between 200 and 404.
 
-That one line is what keeps the options abstractions — and, transitively, a dependency-injection
-model — out of the inner layers, and it makes the claim "Application depends on no framework"
-true rather than aspirational. An architecture test enforces it.
-
-## What the template actually implements
-
-One vertical slice, chosen to be domain-neutral: a **readiness verdict**.
-
-- `Domain/Readiness/ReadinessVerdict.Evaluate` decides whether the process should receive traffic,
-  from its uptime, a warm-up period, and what the declared dependencies reported. It has real
-  edges — a clock that moved backwards, a warm-up boundary, an empty dependency set, a stable
-  ordering for the reason string — and the unit tests cover them.
-- `Application/Readiness/ReadinessService` gathers the inputs through three ports and lets the
-  domain rule decide. It adds a probe timeout, and reports a timed-out probe as **unavailable**:
-  an unknown dependency state must never read as a healthy one.
-- `Infrastructure/Readiness/*` implements the ports. `NoDependencyProbe` returns an empty
-  collection, which the rule treats as a valid "nothing configured" state — it is not a stub for a
-  future database.
-- `Api` maps `/health/live` and `/health/ready`. The status code follows the verdict, because a
-  load balancer reads the code and not the body.
-
-This is a starting point to delete, not a domain to inherit. What is worth keeping is the shape:
-the rule in Domain, the ports in Application, the adapters in Infrastructure, the mapping in Api.
+Health is deliberately outside that shape. `/health/live` and `/health/ready` are mapped directly
+in `Program.cs` on the framework's health-check middleware, with no check registered: EscapeNow has
+no dependency to probe, and a forecast API failure is a request failure rather than an unhealthy
+process. Adding a real check later is a registration in the composition root, not a new port in an
+inner layer.
 
 ## Three enforcement mechanisms, because one is not enough
 
@@ -109,55 +106,30 @@ tests, "no cycles found" would be indistinguishable from "the detector does not 
 | Fixture | Violation |
 | --- | --- |
 | `Fixtures.Layers.Domain` | references `Fixtures.Layers.Infrastructure`, and the web framework |
-| `Fixtures.Modules.Beta` | reaches past `Fixtures.Modules.Alpha`'s contract into its internals |
+| `Fixtures.Layers.Infrastructure` | the counterpart it depends on, so the illegal edge exists to be found |
 
 Each rule has a test that fails if the rule does **not** report a violation on its fixture. That
 closes the loop: weakening a rule to make a real failure disappear turns its negative test red.
 
 The fixtures are never part of the production rule set — production assemblies are loaded
 explicitly by name from the configuration — so a deliberate violation here can neither trigger nor
-mask a real finding. `Fixtures.Modules.Beta` also keeps a *legal* dependency on Alpha's contract
-alongside the illegal one, which proves the rule does not simply flag every cross-module reference.
-
-## Modules
-
-`architecture.modules` in `project.config.json` is the registry. The template ships it empty.
-
-When it is non-empty, a module may be reached only through its declared contract namespace. A type
-that is public to the CLR but outside the contract is still internal to the module, and reaching it
-is exactly the coupling module boundaries exist to prevent — invisible to any rule that only looks
-at accessibility.
-
-Rules are driven by the registry and the `{solutionName}.Modules.{Name}` convention, so registering
-a module brings it under the rules with **no test file edited**. The registry is compared against
-the projects present in both directions: a registered module with no project, and a module project
-that is not registered, are both failures. The second is the one that matters — a module nobody
-registered is a module outside the rules entirely.
+mask a real finding.
 
 ## Replacing the profile
 
 Set `architecture.profile` to `custom` in `project.config.json`.
 
 The layer-direction rules then report themselves **skipped** — visible as skipped in the test
-report, never as passed — while these keep running:
+report, never as passed — while the whole-repository cycle check and every negative fixture test
+keep running. An acyclic dependency graph is an invariant of any architecture, not a property of
+this one, and the detectors have to stay proven either way.
 
-- the whole-repository cycle check;
-- module boundary and registry consistency;
-- every negative fixture test, so the detectors stay proven.
-
-An acyclic dependency graph and a registry that matches reality are invariants of any architecture,
-not properties of this one.
-
-Verified: switching the profile to `custom` moves the architecture test run from 28 passed /
-2 skipped to 20 passed / 10 skipped, with nothing failing.
-
-Then: record the decision in `docs/adr/`, describe the new direction here, and — if you want it
-enforced — add rules for it. `custom` means "the template does not check my layering", not "my
-layering does not matter".
+Then: record the decision in `docs/adr/`, and describe the new direction here. `custom` means
+"the layering is not checked here", not "the layering does not matter".
 
 ## Deliberately not here
 
 No MediatR, no CQRS, no generic repository, no event bus, no AutoMapper, no result-monad library,
-no Kubernetes manifests, no Aspire. Each can be right for a specific problem; none is right by
-default. A library in a starter template is a decision nobody made — so if a change needs one,
-argue for it in that change's design document.
+no Kubernetes manifests, no Aspire, and no persistence at all — the twelve cities are a static
+list and every forecast is fetched per request. Each of those can be right for a specific problem;
+none is right by default. If a change needs one, argue for it in that change's design document.

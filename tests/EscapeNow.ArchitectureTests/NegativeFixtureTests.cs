@@ -28,7 +28,7 @@ public sealed class NegativeFixtureTests
     [Fact]
     public void The_layer_direction_rule_detects_a_domain_that_depends_on_infrastructure()
     {
-        var architecture = ModuleRules.LoadArchitecture(FixtureDomain, FixtureInfrastructure);
+        var architecture = ArchitectureLoader.LoadArchitecture(FixtureDomain, FixtureInfrastructure);
 
         IObjectProvider<IType> infrastructureTypes = Types().That()
             .ResideInAssembly(FixtureInfrastructure)
@@ -101,7 +101,7 @@ public sealed class NegativeFixtureTests
         // fails here rather than quietly making every rule vacuous. Verified against 0.13.4:
         // an empty selection is reported as "The rule requires positive evaluation, not just
         // absence of violations."
-        var architecture = ModuleRules.LoadArchitecture(FixtureDomain);
+        var architecture = ArchitectureLoader.LoadArchitecture(FixtureDomain);
 
         var emptySelectionRule = Types().That()
             .ResideInNamespace("This.Namespace.Does.Not.Exist")
@@ -121,7 +121,7 @@ public sealed class NegativeFixtureTests
         // empty-selection protection, which makes it the exact call an agent could add to turn a
         // red rule green while checking nothing. This proves RuleGuard still fails such a rule,
         // so the guard is a real second line of defence rather than a duplicate of the library's.
-        var architecture = ModuleRules.LoadArchitecture(FixtureDomain);
+        var architecture = ArchitectureLoader.LoadArchitecture(FixtureDomain);
 
         IObjectProvider<IType> nothing = Types().That()
             .ResideInNamespace("This.Namespace.Does.Not.Exist")
@@ -142,94 +142,5 @@ public sealed class NegativeFixtureTests
             () => RuleGuard.Check(nothing, optedOutRule, "a deliberately empty selection"));
 
         Assert.Contains("analysed 0 type(s)", guardFailure.Message, StringComparison.Ordinal);
-    }
-}
-
-/// <summary>
-/// Proof that the module boundary rule detects a module reaching past another's contract, using
-/// the fixture module pair. This is also what covers the rule while the template's own registry
-/// is empty.
-/// </summary>
-public sealed class ModuleBoundaryRuleTests
-{
-    private static readonly ModuleRules.Module Alpha = new(
-        Name: "Alpha",
-        RootNamespace: "Fixtures.Modules.Alpha",
-        Contract: "Contracts",
-        AssemblyName: "Fixtures.Modules.Alpha");
-
-    private static readonly ModuleRules.Module Beta = new(
-        Name: "Beta",
-        RootNamespace: "Fixtures.Modules.Beta",
-        Contract: "Contracts",
-        AssemblyName: "Fixtures.Modules.Beta");
-
-    private static Architecture FixtureArchitecture() => ModuleRules.LoadArchitecture(
-        ReflectionAssembly.Load(Alpha.AssemblyName),
-        ReflectionAssembly.Load(Beta.AssemblyName));
-
-    [Fact]
-    public void Detects_a_dependency_on_another_modules_internals()
-    {
-        var violations = ModuleRules.FindBoundaryViolations(FixtureArchitecture(), [Alpha, Beta]);
-
-        Assert.NotEmpty(violations);
-        Assert.Contains(
-            violations,
-            v => v.Contains("Fixtures.Modules.Alpha.Internal.AlphaInternals", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Does_not_flag_the_legal_dependency_on_the_contract()
-    {
-        // BoundaryBreaker depends on both IAlphaService (legal) and AlphaInternals (illegal).
-        // Only the second may be reported, or the rule would be unusable in practice.
-        var violations = ModuleRules.FindBoundaryViolations(FixtureArchitecture(), [Alpha, Beta]);
-
-        Assert.DoesNotContain(
-            violations,
-            v => v.Contains("Fixtures.Modules.Alpha.Contracts.IAlphaService", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Reports_nothing_when_the_contract_covers_the_whole_module()
-    {
-        // Widening Alpha's contract to its root namespace makes every dependency legal. This
-        // proves the rule is driven by the registered contract rather than hardcoding a
-        // namespace, which is what lets a real project choose its own contract layout.
-        var wideAlpha = Alpha with { Contract = string.Empty };
-
-        var violations = ModuleRules.FindBoundaryViolations(
-            FixtureArchitecture(),
-            [wideAlpha with { Contract = "Contracts" }, Beta]);
-
-        // Sanity check that the narrow contract still reports, so the assertion below is about
-        // the widening and not about an accidentally broken fixture.
-        Assert.NotEmpty(violations);
-
-        var widened = ModuleRules.FindBoundaryViolations(
-            FixtureArchitecture(),
-            [new ModuleRules.Module("Alpha", "Fixtures", "Modules.Alpha", "Fixtures.Modules.Alpha"), Beta]);
-
-        Assert.Empty(widened);
-    }
-
-    [Fact]
-    public void Registry_comparison_reports_both_directions()
-    {
-        var (registeredWithoutProject, projectWithoutRegistration) = ModuleRules.CompareRegistry(
-            registeredModuleNames: ["Alpha", "Ghost"],
-            projectNames: ["X.Modules.Alpha", "X.Modules.Stowaway", "X.Domain"],
-            solutionName: "X");
-
-        Assert.Contains(
-            registeredWithoutProject,
-            v => v.Contains("Ghost", StringComparison.Ordinal));
-        Assert.Contains("Stowaway", projectWithoutRegistration);
-        // A registered module with a matching project is reported in neither direction.
-        Assert.DoesNotContain(
-            registeredWithoutProject,
-            v => v.Contains("Alpha", StringComparison.Ordinal));
-        Assert.DoesNotContain("Alpha", projectWithoutRegistration);
     }
 }

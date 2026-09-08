@@ -56,9 +56,10 @@ The repository's policy is what is committed here and reviewed by a human.
 
 ## What is protected and what is not
 
-The hooks in `.claude/hooks/` are advisory. `protected-config-warning.mjs` prints a reminder when a
-protected configuration file is about to change; it does not block the edit, and it cannot. A
-prompt, a rule file and a list of patterns are **not a sandbox**.
+The hooks in `.claude/hooks/` are advisory: they report, and they cannot block an edit. What
+actually prompts a human before a protected configuration file changes is the `permissions.ask`
+list in `.claude/settings.json`, evaluated by the harness before the tool runs. A prompt, a rule
+file and a list of patterns are **not a sandbox**.
 
 What is actually enforced:
 

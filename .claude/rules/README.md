@@ -11,4 +11,4 @@ than sitting in context for every task.
 
 Structure and precedence follow the layered pattern published in the ECC rules system
 (github.com/affaan-m/ECC, MIT, commit e04ea0b, read 2026-09-07): more specific rules override
-more general ones. The rule content here is the template's own; see `docs/attribution.md`.
+more general ones. The rule content here is this repository's own; see `docs/attribution.md`.

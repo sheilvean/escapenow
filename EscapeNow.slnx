@@ -13,7 +13,5 @@
   <Folder Name="/tests/fixtures/">
     <Project Path="tests/fixtures/Fixtures.Layers.Domain/Fixtures.Layers.Domain.csproj" />
     <Project Path="tests/fixtures/Fixtures.Layers.Infrastructure/Fixtures.Layers.Infrastructure.csproj" />
-    <Project Path="tests/fixtures/Fixtures.Modules.Alpha/Fixtures.Modules.Alpha.csproj" />
-    <Project Path="tests/fixtures/Fixtures.Modules.Beta/Fixtures.Modules.Beta.csproj" />
   </Folder>
 </Solution>
