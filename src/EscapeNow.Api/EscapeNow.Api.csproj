@@ -9,6 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- PostgreSQL client for the ready probe. Product tables are a later change. -->
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The integration test project drives this host through WebApplicationFactory. -->
     <InternalsVisibleTo Include="EscapeNow.IntegrationTests" />
   </ItemGroup>

@@ -79,8 +79,8 @@
       "required": ["database", "deployment"],
       "properties": {
         "database": {
-          "enum": ["none"],
-          "description": "Persistence integration. Only 'none' is implemented; a database stage reports 'not configured', never 'passed'."
+          "enum": ["none", "postgres"],
+          "description": "Persistence integration. 'none': the database stage reports not configured. 'postgres': the stage opens a connection and fails if the instance is unreachable."
         },
         "deployment": {
           "enum": ["none"],

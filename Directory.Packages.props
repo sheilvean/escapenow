@@ -22,4 +22,10 @@
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.4" />
   </ItemGroup>
 
+  <ItemGroup Label="Persistence">
+    <!-- PostgreSQL ADO.NET client. Pin read from nuget.org 2026-09-08; 10.0.3 is the current
+         net10.0-supporting line. PostgreSQL Licence. -->
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
 </Project>

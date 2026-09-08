@@ -94,6 +94,7 @@ describe('a configuration that does not satisfy the schema is rejected', () => {
     ['a missing required section', (c) => { delete c.openspec; }, 'required property'],
     ['a non-boolean flag', (c) => { c.openspec.archiveGate.enabled = 'yes'; }, 'must be boolean'],
     ['a bad language tag', (c) => { c.documentation.language = 'English'; }, 'must match pattern'],
+    ['an unknown persistence integration', (c) => { c.integrations.database = 'mysql'; }, 'allowed'],
     ['a backslash frontend path', (c) => { c.paths.frontend = 'apps\\web'; }, 'must match pattern'],
     ['an absolute frontend path', (c) => { c.paths.frontend = '/srv/frontend'; }, 'must match pattern'],
   ];
@@ -133,6 +134,14 @@ describe('a configuration that does not satisfy the schema is rejected', () => {
     const { config } = loadConfig(repo);
 
     assert.equal(config.paths.frontend, undefined);
+  });
+
+  test('postgres is an accepted persistence integration', () => {
+    const repo = makeRepo('postgres-ok', (c) => { c.integrations.database = 'postgres'; });
+
+    const { config } = loadConfig(repo);
+
+    assert.equal(config.integrations.database, 'postgres');
   });
 });
 

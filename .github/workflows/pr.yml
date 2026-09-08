@@ -49,6 +49,24 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 25
+    # Image tag is copied from compose.yaml; that file is the owner. Health options match
+    # the Compose healthcheck so the job does not start check before Postgres accepts connections.
+    services:
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_USER: escapenow
+          POSTGRES_PASSWORD: escapenow
+          POSTGRES_DB: escapenow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U escapenow -d escapenow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CONNECTIONSTRINGS__ESCAPENOW: Host=localhost;Port=5432;Database=escapenow;Username=escapenow;Password=escapenow
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

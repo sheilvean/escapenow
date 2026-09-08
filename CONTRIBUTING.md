@@ -6,9 +6,21 @@
 npm ci                  # installs the pinned OpenSpec CLI from the lockfile
 npm ci --prefix frontend # the Angular app has its own lockfile; check builds and tests it
 dotnet restore
+```
+
+PostgreSQL is part of `check`. Install [Rancher Desktop](https://rancherdesktop.io/), set
+**Container Engine** to **dockerd (moby)** so `docker` and `docker compose` work, then:
+
+```bash
+docker compose up -d
 node tools/repo.mjs doctor
 node tools/repo.mjs check
 ```
+
+The Compose file publishes PostgreSQL 18.6 on `localhost:5432` with the demo credential
+`escapenow` / `escapenow` / `escapenow` (user, database, password). That value is in git on
+purpose; it is not a production secret. The host port must be free: a Windows PostgreSQL
+service already listening on 5432 will take the connection instead of the container.
 
 `doctor` reports and never repairs. If it says something is wrong, fix that before starting work —
 a check that was already failing tells you nothing about your change.
@@ -94,7 +106,7 @@ draft state is deliberately not an input to the policy.
 node tools/repo.mjs check
 ```
 
-Ten stages. Read the summary and report it as it came out:
+Every declared stage, in order. Read the summary and report it as it came out:
 
 - `passed`, `failed` and `not-configured` are three different outcomes. A stage that is not
   configured is not a pass.

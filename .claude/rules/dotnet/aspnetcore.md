@@ -37,8 +37,9 @@ An endpoint translates HTTP to a call and a result back to HTTP. Nothing else:
   than following an example.
 - Defaults live in `appsettings.json` and must be safe for a developer with no local setup.
   Anything environment-specific comes from the environment, never from a committed file.
-- Never commit a connection string with credentials, or any secret. Local overrides go in an
-  ignored file.
+- Never commit a production connection string, or any secret. The Development file may contain the
+  published demo credential that matches `compose.yaml`; that value is labelled as such and is not
+  a secret. Production configuration does not commit a password.
 
 ## Errors
 
@@ -52,8 +53,9 @@ An endpoint translates HTTP to a call and a result back to HTTP. Nothing else:
 ## Health
 
 `/health/live` and `/health/ready` are mapped in `Program.cs` on the framework's health-check
-middleware. No check is registered: there is no dependency to probe, and a forecast API failure is
-a request failure rather than an unhealthy process. See `openspec/specs/service-health/`.
+middleware. Postgres is probed with `SELECT 1` through Npgsql, registered here, not behind an
+Application port. A forecast API failure is a request failure rather than an unhealthy process.
+See `openspec/specs/service-health/` and `docs/adr/0009-postgres-rancher-compose.md`.
 
 - Liveness answers "is the process running" and must not depend on anything slow or remote. An
   orchestrator restarts the process when it fails, so a dependency outage must not make it fail.

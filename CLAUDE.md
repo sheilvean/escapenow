@@ -23,7 +23,7 @@ discovery UI and service health — and in `openspec/changes/` while a change is
 - Test projects: `tests/EscapeNow.{UnitTests,ArchitectureTests,IntegrationTests}`
 - Negative architecture fixtures: `tests/fixtures/`
 - Architecture profile: `layered`
-- Optional integrations: database: none, deployment: none
+- Optional integrations: database: postgres, deployment: none
 - Documentation language: `en`
 - Archive gate: enabled, scope `repository`
 <!-- END GENERATED: project-context -->

@@ -1,18 +1,22 @@
 using System.IO;
+using EscapeNow.Api;
 using EscapeNow.Api.Endpoints;
 using EscapeNow.Application.Abstractions;
 using EscapeNow.Application.Destinations;
 using EscapeNow.Infrastructure.Weather;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Composition -------------------------------------------------------------------
-// EscapeNow has no dependency to probe: the forecast API is called per request and a failure
-// there is a request failure, not an unhealthy process. So no health check is registered, and
-// both endpoints report healthy while the process is running. Adding a real check later is a
-// registration here, not a new port in the inner layers.
-builder.Services.AddHealthChecks();
+// Liveness is "the process is up" and must not consult Postgres — an orchestrator would
+// restart a healthy process during a database outage. Readiness includes the postgres check,
+// so a load balancer can stop sending traffic when SELECT 1 fails. The check lives here, not
+// behind an Application port; see openspec/specs/service-health/.
+var connectionString = builder.Configuration.GetConnectionString("EscapeNow") ?? string.Empty;
+builder.Services.AddHealthChecks()
+    .AddCheck("postgres", new PostgresHealthCheck(connectionString));
 
 builder.Services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>(client =>
 {
@@ -43,8 +47,9 @@ app.UseStatusCodePages();
 app.UseCors("Frontend");
 
 // A load balancer routes on the status code, so the response body is deliberately not a
-// contract here.
-app.MapHealthChecks("/health/live");
+// contract here. Live includes no checks (empty registration is healthy). Ready includes
+// postgres, so an unreachable instance is not 200.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = static _ => false });
 app.MapHealthChecks("/health/ready");
 
 app.MapDestinationEndpoints();

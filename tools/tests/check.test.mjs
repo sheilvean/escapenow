@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { extractTestSummary, readVitestReport, runCheck, STAGE_NAMES } from '../lib/check.mjs';
+import { pingPostgres, parseAdoNet } from '../lib/postgres-ping.mjs';
 
 describe('extractTestSummary', () => {
   test('reads an uncoloured Microsoft.Testing.Platform block', () => {
@@ -275,5 +276,92 @@ describe('the frontend stages', () => {
       assert.equal(stage.status, 'failed');
       assert.match(stage.messages.join('\n'), /npm ci/);
     }
+  });
+});
+
+describe('the database stage', () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'database-stage-'));
+
+  after(() => fs.rmSync(scratch, { recursive: true, force: true }));
+
+  const config = (database) => ({
+    solutionName: 'X',
+    rootNamespace: 'X',
+    paths: { solutionFile: 'X.slnx', src: 'src', tests: 'tests' },
+    integrations: { database, deployment: 'none' },
+  });
+
+  const databaseStage = async (root, integrations) => {
+    const { results } = await runCheck({ root, config: config(integrations), ci: false });
+    return results.find((r) => r.name === 'database');
+  };
+
+  test('sits between architecture tests and integration tests', () => {
+    const arch = STAGE_NAMES.indexOf('test:arch');
+    assert.equal(STAGE_NAMES[arch + 1], 'database');
+    assert.equal(STAGE_NAMES[arch + 2], 'test:integration');
+  });
+
+  test('reports not configured when persistence is none', async () => {
+    const root = path.join(scratch, 'none');
+    fs.mkdirSync(root, { recursive: true });
+
+    const stage = await databaseStage(root, 'none');
+
+    assert.equal(stage.status, 'not-configured');
+    assert.match(stage.messages.join('\n'), /not a pass/);
+  });
+
+  test('fails, naming compose up, when the instance refuses the connection', async () => {
+    const root = path.join(scratch, 'refused');
+    fs.mkdirSync(root, { recursive: true });
+
+    const previous = process.env.CONNECTIONSTRINGS__ESCAPENOW;
+    process.env.CONNECTIONSTRINGS__ESCAPENOW =
+      'Host=127.0.0.1;Port=1;Database=escapenow;Username=escapenow;Password=escapenow';
+
+    try {
+      const stage = await databaseStage(root, 'postgres');
+
+      assert.equal(stage.status, 'failed');
+      assert.match(stage.messages.join('\n'), /docker compose up -d/);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.CONNECTIONSTRINGS__ESCAPENOW;
+      } else {
+        process.env.CONNECTIONSTRINGS__ESCAPENOW = previous;
+      }
+    }
+  });
+});
+
+describe('pingPostgres', () => {
+  test('parses an ADO.NET connection string into pg Client options', () => {
+    assert.deepEqual(
+      parseAdoNet(
+        'Host=localhost;Port=5432;Database=escapenow;Username=escapenow;Password=escapenow'
+      ),
+      {
+        host: 'localhost',
+        port: 5432,
+        user: 'escapenow',
+        password: 'escapenow',
+        database: 'escapenow',
+      }
+    );
+  });
+
+  test('a successful SELECT 1 is a resolved ping', async () => {
+    class Client {
+      async connect() {}
+      async query(sql) {
+        assert.equal(sql, 'SELECT 1');
+      }
+      async end() {}
+    }
+
+    await pingPostgres('Host=localhost;Port=5432;Database=escapenow;Username=u;Password=p', {
+      Client,
+    });
   });
 });
