@@ -55,6 +55,7 @@ export const STAGE_NAMES = [
   'build',
   'test:unit',
   'test:arch',
+  'database',
   'test:integration',
   'frontend:build',
   'frontend:test',
@@ -78,6 +79,7 @@ export async function runCheck({ root, config, ci }) {
   results.push(stageBuild(root, config, ci));
   results.push(stageTest(root, config, 'test:unit', 'UnitTests'));
   results.push(stageTest(root, config, 'test:arch', 'ArchitectureTests'));
+  results.push(stageDatabase(root, config));
   results.push(stageTest(root, config, 'test:integration', 'IntegrationTests'));
   results.push(stageFrontendBuild(root, config));
   results.push(stageFrontendTest(root, config));
@@ -260,6 +262,52 @@ function stageTest(root, config, stageName, projectSuffix) {
         result.status === 0
           ? [`${summary.total} test(s): ${summary.succeeded} succeeded, ${summary.skipped} skipped`]
           : [tail(result, 30)],
+    };
+  });
+}
+
+const COMPOSE_UP = 'docker compose up -d';
+
+/**
+ * Reachability of the configured PostgreSQL instance.
+ *
+ * When the integration is not `postgres`, this is not configured — which is not a pass. When it
+ * is, a refused connection fails and names the Compose command rather than leaving integration
+ * tests to fail with nine HTTP errors.
+ */
+function stageDatabase(root, config) {
+  return timed('database', () => {
+    const integration = config.integrations?.database;
+    if (integration !== 'postgres') {
+      return {
+        status: 'not-configured',
+        commands: [],
+        messages: [
+          'integrations.database is not postgres, so there is no database to check. Reported as ' +
+            'not configured, which is not a pass.',
+        ],
+      };
+    }
+
+    const ping = path.join(import.meta.dirname, 'postgres-ping.mjs');
+    const result = run(process.execPath, [ping], { cwd: root });
+    const command = formatArgv(result.argv);
+
+    if (result.status === 0) {
+      return {
+        status: 'passed',
+        commands: [command],
+        messages: ['PostgreSQL accepted SELECT 1'],
+      };
+    }
+
+    return {
+      status: 'failed',
+      commands: [command],
+      messages: [
+        `PostgreSQL is not reachable. Start it with \`${COMPOSE_UP}\`.`,
+        tail(result, 15),
+      ],
     };
   });
 }

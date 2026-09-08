@@ -10,19 +10,35 @@ A demo portfolio application for planning **last-minute European city breaks** b
 | --- | --- |
 | Frontend | Angular 21 (LTS), Vite build, Vitest, TypeScript, standalone components, HttpClient |
 | Backend | ASP.NET Core Web API (.NET 10) |
+| Persistence | PostgreSQL 18.6 from `compose.yaml` (reachability only; no product tables yet) |
 | Weather data | [Open-Meteo](https://open-meteo.com/) (free, no API key) |
+| Local engine | [Rancher Desktop](https://rancherdesktop.io/) with the **dockerd (moby)** container engine |
 
 ## Quick start
 
-### 1. Backend API
+### 1. PostgreSQL
+
+Install [Rancher Desktop](https://rancherdesktop.io/), set **Container Engine** to **dockerd (moby)**,
+then from the repository root:
 
 ```bash
-dotnet run --project src/EscapeNow.Api/EscapeNow.Api.csproj
+docker compose up -d
+```
+
+That starts PostgreSQL 18.6 on `localhost:5432`. The published demo credential is user, database
+and password `escapenow`. It is not a secret; do not reuse it for a hosted environment. Port 5432
+must be free on the host — a Windows PostgreSQL service bound there will receive the connection
+instead of the container.
+
+### 2. Backend API
+
+```bash
+dotnet run --project src/EscapeNow.Api/EscapeNow.Api.csproj --launch-profile http
 ```
 
 API: `http://localhost:5180`
 
-### 2. Frontend
+### 3. Frontend
 
 ```bash
 cd frontend
@@ -80,5 +96,7 @@ backend behind them.
 node tools/repo.mjs check
 ```
 
-Ten stages, in order. `passed`, `failed` and `not-configured` are three different outcomes; a
-stage that executed zero tests fails. `CONTRIBUTING.md` has the change workflow.
+Every declared stage, in order — including `database` before `test:integration`. `passed`,
+`failed` and `not-configured` are three different outcomes; a stage that executed zero tests
+fails. A down Postgres fails `database` and names `docker compose up -d`. `CONTRIBUTING.md` has
+the change workflow.

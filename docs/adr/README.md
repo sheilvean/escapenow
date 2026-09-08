@@ -27,6 +27,7 @@ the code obey it does not.
 | 0006 | No CODEOWNERS and no branch protection (accepted risk) |
 | 0007 | Only free dependencies, in every configuration |
 | 0008 | Angular on the LTS line, built with `@angular/build` and tested with Vitest |
+| 0009 | PostgreSQL 18.6 from Compose, on Rancher Desktop (dockerd), without EF |
 
 ## A note on wording
 

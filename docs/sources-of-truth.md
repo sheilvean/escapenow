@@ -12,6 +12,8 @@ that can be enforced mechanically.
 | Target framework, warning policy, analyzers, artifacts layout | `Directory.Build.props` | a `targetFramework` key in `project.config.json` fails the `config` stage |
 | NuGet package versions | `Directory.Packages.props` | central package management is on, so a `Version=` on a `PackageReference` is a build error |
 | Per-project resolved dependency graph | `**/packages.lock.json` | CI restores in locked mode, so an unexpected resolution fails |
+| PostgreSQL image tag | `compose.yaml` (`postgres:18.6`) | review; the `checks` job copies this tag onto `services.postgres` and must not invent a second version |
+| Development demo connection string | `src/EscapeNow.Api/appsettings.Development.json` (`ConnectionStrings:EscapeNow`) | review; matches Compose. Production configuration does not commit a password. CI and the Testing host set `CONNECTIONSTRINGS__ESCAPENOW` |
 | Node tooling versions, including the OpenSpec CLI | `package.json` + `package-lock.json` | the `specs` stage fails when the installed CLI differs from the lockfile |
 | The Node version contributors and CI run | `package.json`, `engines.node` | `doctor` reads it, and `setup-node` reads the same file in CI |
 | Frontend dependency versions | `frontend/package.json` + `frontend/package-lock.json` | the `frontend:build` and `frontend:test` stages fail when the frontend is not installed from its lockfile |

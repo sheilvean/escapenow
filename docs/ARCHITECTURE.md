@@ -57,10 +57,10 @@ Every layer earns its place in a single request, `GET /api/destinations/recommen
   between 200 and 404.
 
 Health is deliberately outside that shape. `/health/live` and `/health/ready` are mapped directly
-in `Program.cs` on the framework's health-check middleware, with no check registered: EscapeNow has
-no dependency to probe, and a forecast API failure is a request failure rather than an unhealthy
-process. Adding a real check later is a registration in the composition root, not a new port in an
-inner layer.
+in `Program.cs` on the framework's health-check middleware. Liveness includes no checks — the
+process is up. Readiness runs `SELECT 1` against PostgreSQL through Npgsql in the composition
+root, so an unreachable instance is not 200. A forecast API failure is still a request failure
+rather than an unhealthy process. The check is a registration here, not a port in an inner layer.
 
 ## Three enforcement mechanisms, because one is not enough
 
@@ -130,6 +130,7 @@ Then: record the decision in `docs/adr/`, and describe the new direction here. `
 ## Deliberately not here
 
 No MediatR, no CQRS, no generic repository, no event bus, no AutoMapper, no result-monad library,
-no Kubernetes manifests, no Aspire, and no persistence at all — the twelve cities are a static
-list and every forecast is fetched per request. Each of those can be right for a specific problem;
+no Kubernetes manifests, no Aspire, no EF Core, and no product tables — PostgreSQL is reachable
+from the host so later state has somewhere to live, but the twelve cities are still a static list
+and every forecast is fetched per request. Each of those can be right for a specific problem;
 none is right by default. If a change needs one, argue for it in that change's design document.

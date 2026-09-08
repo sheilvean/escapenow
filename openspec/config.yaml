@@ -19,6 +19,7 @@ context: |
   - Frontend: Angular 21 under `frontend/`, served separately from the API. Built with
     `@angular/build` (Vite) and unit-tested with Vitest; both run as stages of `check`.
   - Weather: Open-Meteo, no API key.
+  - Persistence: PostgreSQL 18, started locally from `compose.yaml` (Rancher Desktop, dockerd).
   - Tests: xUnit v3 on Microsoft.Testing.Platform. One runner, selected in `global.json`.
   - Architecture rules: ArchUnitNET plus a project-reference graph check.
   - Repository tooling: Node, entry point `tools/repo.mjs`.

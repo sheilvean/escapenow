@@ -153,7 +153,8 @@
         "type": "Project",
         "dependencies": {
           "EscapeNow.Application": "[1.0.0, )",
-          "EscapeNow.Infrastructure": "[1.0.0, )"
+          "EscapeNow.Infrastructure": "[1.0.0, )",
+          "Npgsql": "[10.0.3, )"
         }
       },
       "escapenow.application": {
@@ -171,6 +172,12 @@
           "EscapeNow.Application": "[1.0.0, )",
           "EscapeNow.Domain": "[1.0.0, )"
         }
+      },
+      "Npgsql": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w=="
       }
     }
   }

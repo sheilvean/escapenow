@@ -190,6 +190,13 @@ public sealed class DestinationEndpointsTests : IClassFixture<DestinationEndpoin
         {
             builder.UseEnvironment("Testing");
 
+            // Same variable CI sets on the checks job. Falls back to the published demo
+            // credential so a local `dotnet test` against compose works without extra env.
+            var connectionString =
+                Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__ESCAPENOW")
+                ?? "Host=localhost;Port=5432;Database=escapenow;Username=escapenow;Password=escapenow";
+            builder.UseSetting("ConnectionStrings:EscapeNow", connectionString);
+
             // Replace the typed-HttpClient registration of the forecast port. RemoveAll drops
             // both the interface registration and the HttpClient plumbing bound to it, so no
             // request can reach the network from here.

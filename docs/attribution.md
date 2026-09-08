@@ -35,6 +35,7 @@ per-seat entitlement, no "free for individuals" caveat. That is a hard rule — 
 | `ajv` | 8.20.0 | MIT |
 | `ajv-formats` | 3.0.1 | MIT |
 | `actionlint` | 2.0.6 | MIT |
+| `pg` | 8.23.0 | MIT |
 | `yaml` | 2.9.0 | ISC |
 
 `ajv` is pinned at 8.20.0 rather than 8.17.1 because 8.17.1 is affected by GHSA-2g4f-4pwh-qvx6
@@ -48,6 +49,10 @@ upstream Go project (`rhysd/actionlint`) is MIT as well.
 `yaml` is ISC — permissive, and free in every configuration. It parses the workflows so the
 `workflows` check stage can assert the safety properties `SECURITY.md` and `docs/github-setup.md`
 promise, rather than pattern-matching the text.
+
+`pg` is the check-time PostgreSQL client used by `tools/lib/postgres-ping.mjs`. It is MIT, pinned
+exactly at 8.23.0 (read from the npm registry on 2026-09-08). The host uses Npgsql; unifying on
+one client would couple `tools/` to a `dotnet` spawn for a two-line probe.
 
 ### Node (frontend, `frontend/package.json`)
 
@@ -87,6 +92,7 @@ Every package above is free to use in every configuration, with no licence key a
 | `TngTech.ArchUnitNET` | 0.13.4 | Apache-2.0 |
 | `TngTech.ArchUnitNET.xUnitV3` | 0.13.4 | Apache-2.0 |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.8 | MIT |
+| `Npgsql` | 10.0.3 | PostgreSQL Licence |
 
 Transitive, via ArchUnitNET: `Mono.Cecil` (MIT), `Newtonsoft.Json` (MIT), `JetBrains.Annotations`
 (MIT), `CycleDetection` (MIT). Microsoft.Testing.Platform arrives through xUnit v3 and the SDK
@@ -94,6 +100,17 @@ Transitive, via ArchUnitNET: `Mono.Cecil` (MIT), `Newtonsoft.Json` (MIT), `JetBr
 
 The .NET SDK and the ASP.NET Core shared framework are MIT and are not vendored — they come from
 the toolchain `global.json` pins.
+
+`Npgsql` 10.0.3 is the current line that supports `net10.0` (nuget.org, 2026-09-08). It is
+referenced from `EscapeNow.Api` only, for the ready probe. PostgreSQL Licence — permissive, free
+in every configuration.
+
+### Runtime (not consumed as packages)
+
+| Component | Version | Licence | How it is used |
+| --- | --- | --- | --- |
+| PostgreSQL | 18.6 (`postgres:18.6`) | PostgreSQL Licence | Official image, started from `compose.yaml` locally and as a GitHub Actions service container on the `checks` job. The image tag is owned by `compose.yaml`. |
+| Rancher Desktop | current | Apache-2.0 | Local container engine with **dockerd (moby)** so `docker` / `docker compose` work. Not used in CI. Kubernetes in Rancher stays off. |
 
 ### GitHub Actions
 
