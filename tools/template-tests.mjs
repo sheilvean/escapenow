@@ -224,7 +224,12 @@ function restorePlaceholderState(root) {
       const file = path.join(root, relative);
       const original = fs.readFileSync(file, 'utf8');
       const token = relative.endsWith('.cs') ? rootNamespace : solutionName;
-      const updated = original.split(token).join(placeholder);
+      let updated = original.split(token).join(placeholder);
+      if (toPosix(relative).endsWith('packages.lock.json')) {
+        updated = updated
+          .split(token.toLowerCase())
+          .join(placeholder.toLowerCase());
+      }
       if (updated !== original) fs.writeFileSync(file, updated, 'utf8');
     }
 
@@ -267,7 +272,23 @@ function restorePlaceholderState(root) {
 }
 
 function exec(cwd, file, argv, { expectFailure = false } = {}) {
-  const result = run(file, argv, { cwd, timeoutMs: 20 * 60 * 1000 });
+  const env = {
+    ...process.env,
+    NO_COLOR: '1',
+    DOTNET_CLI_UI_LANGUAGE: 'en',
+    DOTNET_NOLOGO: '1',
+    DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+  };
+  // The suite copies the template into a throwaway git repo. Inheriting the host
+  // GITHUB_* context would make archive-gate diff against the pull-request base
+  // in a repository that has neither a remote nor that ref.
+  delete env.GITHUB_EVENT_NAME;
+  delete env.GITHUB_BASE_REF;
+  delete env.GITHUB_HEAD_REF;
+  delete env.GITHUB_REF;
+  delete env.GITHUB_REF_NAME;
+
+  const result = run(file, argv, { cwd, timeoutMs: 20 * 60 * 1000, env });
 
   if (VERBOSE) {
     detail(`$ ${formatArgv(result.argv)}`);
@@ -424,6 +445,12 @@ scenario('first application: rename applies to the declared file set only', () =
   assert(
     leftovers.length === 0,
     `no occurrence of the placeholder "${placeholder}" remains: ${leftovers.join(', ')}`
+  );
+
+  assert(
+    fs.readFileSync(path.join(firstApp, 'src', 'AcmeOrders.Application', 'packages.lock.json'), 'utf8')
+      .includes('"acmeorders.domain"'),
+    'NuGet lock files record the new project id in lowercase, so CI locked restore can succeed'
   );
 
   const config = readJson(path.join(firstApp, 'project.config.json'));

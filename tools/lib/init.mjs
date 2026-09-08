@@ -86,6 +86,29 @@ function selectRenameTargets(root, globs, token) {
 }
 
 /**
+ * NuGet writes project ids in packages.lock.json in lowercase (`escapenow.domain`).
+ * A case-sensitive placeholder replace would leave those keys stale and CI's
+ * RestoreLockedMode would then fail with NU1004.
+ */
+function isPackageLock(relative) {
+  return toPosix(relative).endsWith('packages.lock.json');
+}
+
+function substitutionCount(text, placeholder, relative) {
+  const mixed = text.split(placeholder).length - 1;
+  if (!isPackageLock(relative)) return mixed;
+  return mixed + (text.split(placeholder.toLowerCase()).length - 1);
+}
+
+function applySubstitution(text, placeholder, value, relative) {
+  let updated = text.split(placeholder).join(value);
+  if (isPackageLock(relative)) {
+    updated = updated.split(placeholder.toLowerCase()).join(value.toLowerCase());
+  }
+  return updated;
+}
+
+/**
  * Which token value applies to a file's contents.
  *
  * The two tokens share one placeholder, so the file set decides: C# sources carry namespaces
@@ -127,9 +150,10 @@ export function planInit(root, config, manifest) {
   const contentEdits = [];
   for (const relative of selectFiles(root, manifest.contentGlobs, manifest.excludeGlobs)) {
     const text = fs.readFileSync(path.join(root, relative), 'utf8');
-    const occurrences = text.split(placeholder).length - 1;
+    const value = valueForFile(relative, tokens);
+    const occurrences = substitutionCount(text, placeholder, relative);
     if (occurrences > 0) {
-      contentEdits.push({ file: relative, occurrences, value: valueForFile(relative, tokens) });
+      contentEdits.push({ file: relative, occurrences, value });
     }
   }
 
@@ -193,7 +217,7 @@ export function applyInit(root, config, manifest, plan, { dryRun }) {
   for (const edit of plan.contentEdits) {
     const file = path.join(root, edit.file);
     const text = fs.readFileSync(file, 'utf8');
-    const updated = text.split(plan.placeholder).join(edit.value);
+    const updated = applySubstitution(text, plan.placeholder, edit.value, edit.file);
     if (updated !== text) {
       if (!dryRun) fs.writeFileSync(file, updated, 'utf8');
       applied.contentEdits++;
